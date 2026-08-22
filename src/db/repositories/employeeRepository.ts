@@ -1,5 +1,5 @@
 import { supabase } from '@/src/lib/supabase';
-import { Employee, ShiftPreference, Weekday } from '@/src/models';
+import { Employee, EmployeePriority, ShiftPreference, Weekday } from '@/src/models';
 
 interface EmployeeRow {
   id: string;
@@ -16,6 +16,7 @@ interface EmployeeRow {
   max_weekly_shifts_by_preference: Employee['maxWeeklyShiftsByPreference'] | null;
   active: boolean;
   user_id: string | null;
+  priority: EmployeePriority | null;
 }
 
 function mapRow(row: EmployeeRow): Employee {
@@ -36,6 +37,7 @@ function mapRow(row: EmployeeRow): Employee {
     maxWeeklyShiftsByPreference: row.max_weekly_shifts_by_preference ?? undefined,
     active: row.active,
     linkedUserId: row.user_id ?? undefined,
+    priority: row.priority ?? undefined,
   };
 }
 
@@ -59,6 +61,7 @@ function toRow(input: Omit<Employee, 'id'>) {
         : null,
     active: input.active,
     user_id: input.linkedUserId ?? null,
+    priority: input.priority ?? null,
   };
 }
 

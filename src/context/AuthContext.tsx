@@ -2,7 +2,7 @@ import { createContext, PropsWithChildren, useContext } from 'react';
 import { Session } from '@supabase/supabase-js';
 import { Profile, useAuth } from '@/src/hooks/useAuth';
 
-interface AuthContextValue {
+export interface AuthContextValue {
   session: Session | null;
   profile: Profile | null;
   reloadProfile: () => Promise<void>;

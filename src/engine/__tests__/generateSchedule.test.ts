@@ -673,4 +673,50 @@ describe('generateSchedule', () => {
     const annaSeraCount = result.assignments.filter((a) => a.employeeId === 'anna').length;
     expect(annaSeraCount).toBeLessThanOrEqual(1);
   });
+
+  it('preferisce il dipendente a priorità alta e usa quello a priorità bassa solo se serve', () => {
+    const anna = makeEmployee({
+      id: 'anna',
+      name: 'Anna',
+      roleId: ROLE_COMMESSO.id,
+      priority: 'bassa',
+    });
+    const bruno = makeEmployee({
+      id: 'bruno',
+      name: 'Bruno',
+      roleId: ROLE_COMMESSO.id,
+      priority: 'alta',
+    });
+
+    const oneSlot: ShiftTemplate[] = [
+      {
+        id: 'shift-mattina',
+        weekday: 1,
+        name: 'Mattina',
+        startTime: '09:00',
+        endTime: '13:00',
+        requirements: [{ roleIds: [ROLE_COMMESSO.id], count: 1 }],
+      },
+    ];
+
+    const withBoth = generateSchedule(
+      { weekStartDate: WEEK_START, employees: [anna, bruno], shiftTemplates: oneSlot, unavailabilities: [], timeOff: [] },
+      ROLES
+    );
+    expect(withBoth.assignments[0].employeeId).toBe('bruno');
+
+    // Se il dipendente ad alta priorità non è disponibile, quello a bassa priorità copre comunque il turno.
+    const withOnlyLowPriorityAvailable = generateSchedule(
+      {
+        weekStartDate: WEEK_START,
+        employees: [anna, bruno],
+        shiftTemplates: oneSlot,
+        unavailabilities: [{ id: 'u1', employeeId: 'bruno', weekday: 1, startTime: '09:00', endTime: '13:00' }],
+        timeOff: [],
+      },
+      ROLES
+    );
+    expect(withOnlyLowPriorityAvailable.assignments[0].employeeId).toBe('anna');
+    expect(withOnlyLowPriorityAvailable.unresolvedShifts).toHaveLength(0);
+  });
 });

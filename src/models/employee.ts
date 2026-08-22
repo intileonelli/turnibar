@@ -9,6 +9,19 @@ export const SHIFT_PREFERENCE_LABELS: Record<ShiftPreference, string> = {
   nessuna: 'Nessuna preferenza',
 };
 
+/**
+ * Priorità del dipendente nella generazione automatica: "alta" viene preferito quando ci sono
+ * più candidati idonei per lo stesso turno, "bassa" viene usato solo se serve davvero (nessun
+ * candidato migliore disponibile), "normale" non cambia nulla rispetto al comportamento di base.
+ */
+export type EmployeePriority = 'alta' | 'normale' | 'bassa';
+
+export const EMPLOYEE_PRIORITY_LABELS: Record<EmployeePriority, string> = {
+  alta: 'Alta',
+  normale: 'Normale',
+  bassa: 'Bassa',
+};
+
 export interface Employee {
   id: string;
   name: string;
@@ -42,6 +55,8 @@ export interface Employee {
   active: boolean;
   /** Id dell'account collegato a questo dipendente (una volta che si è "identificato" con l'app), se presente. */
   linkedUserId?: string;
+  /** Priorità nella generazione automatica dei turni. Non impostata = 'normale'. */
+  priority?: EmployeePriority;
 }
 
 /** Ruoli che il dipendente può coprire, in ordine di preferenza: principale ed eventuale secondario/di riserva. */

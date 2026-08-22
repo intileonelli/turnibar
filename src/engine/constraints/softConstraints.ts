@@ -23,6 +23,14 @@ const EMPLOYEE_SECONDARY_ROLE_PENALTY = 5;
  * i candidati e il turno va a qualcun altro come al solito.
  */
 const PINNED_SHIFT_BONUS = 1000;
+/**
+ * Bonus/penalità per la priorità del dipendente ("alta"/"bassa"): abbastanza forte da far
+ * preferire sistematicamente un dipendente ad alta priorità rispetto a uno a bassa quando
+ * entrambi sono idonei, ma molto più debole della penalità per ruolo (50) o del bonus turno
+ * fisso (1000), così un dipendente a bassa priorità viene comunque usato quando è l'unico
+ * idoneo o l'unico che copre il ruolo principale dello slot.
+ */
+const PRIORITY_BONUS = 15;
 
 export function preferenceMatches(employee: Employee, slot: Pick<Slot, 'startTime'>): boolean {
   if (employee.preference === 'nessuna') return true;
@@ -50,6 +58,12 @@ export function scoreCandidate(employee: Employee, slot: Slot, state: SolverStat
 
   if (employee.pinnedShiftTemplateIds?.includes(slot.shiftTemplateId)) {
     score += PINNED_SHIFT_BONUS;
+  }
+
+  if (employee.priority === 'alta') {
+    score += PRIORITY_BONUS;
+  } else if (employee.priority === 'bassa') {
+    score -= PRIORITY_BONUS;
   }
 
   const { priorityIndex, usedSecondary } = matchRolePriority(employee, slot);

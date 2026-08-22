@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Session } from '@supabase/supabase-js';
 import { supabase } from '@/src/lib/supabase';
 
@@ -14,50 +14,74 @@ export interface Profile {
 export function useAuth() {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [sessionLoading, setSessionLoading] = useState(true);
-  const [profileLoading, setProfileLoading] = useState(true);
+  const [initializing, setInitializing] = useState(true);
+  const initialized = useRef(false);
 
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session);
-      setSessionLoading(false);
-    });
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, newSession) => {
-      setSession(newSession);
-    });
-    return () => listener.subscription.unsubscribe();
-  }, []);
-
-  const reloadProfile = async () => {
-    if (!session) {
-      setProfile(null);
-      setProfileLoading(false);
-      return;
-    }
-    setProfileLoading(true);
+  const loadProfile = useCallback(async (userId: string) => {
     const { data } = await supabase
       .from('profiles')
       .select('id, company_id, role, full_name')
-      .eq('id', session.user.id)
+      .eq('id', userId)
       .maybeSingle();
     setProfile(
       data
         ? { id: data.id, companyId: data.company_id, role: data.role, fullName: data.full_name }
         : null
     );
-    setProfileLoading(false);
-  };
+  }, []);
 
   useEffect(() => {
-    reloadProfile();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session]);
+    let cancelled = false;
+
+    supabase.auth.getSession().then(async ({ data }) => {
+      if (cancelled) return;
+      setSession(data.session);
+      if (data.session) await loadProfile(data.session.user.id);
+      initialized.current = true;
+      setInitializing(false);
+    });
+
+    // Supabase può emettere eventi "silenziosi" (es. rinnovo del token in background, o al
+    // ritorno di focus sulla scheda del browser) che riguardano la STESSA sessione: in quei
+    // casi va aggiornato solo il token, senza ricaricare il profilo né mostrare di nuovo la
+    // schermata di caricamento (altrimenti l'app "salta" alla Home ad ogni evento).
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, newSession) => {
+      setSession((prev) => {
+        const sameUser = prev?.user.id === newSession?.user.id;
+        if (!sameUser) {
+          if (newSession) {
+            loadProfile(newSession.user.id);
+          } else {
+            setProfile(null);
+          }
+        }
+        return newSession;
+      });
+    });
+
+    return () => {
+      cancelled = true;
+      listener.subscription.unsubscribe();
+    };
+  }, [loadProfile]);
+
+  const reloadProfile = useCallback(async () => {
+    if (!session) {
+      setProfile(null);
+      return;
+    }
+    await loadProfile(session.user.id);
+  }, [session, loadProfile]);
+
+  const signOut = useCallback(() => {
+    supabase.auth.signOut();
+  }, []);
 
   return {
     session,
     profile,
-    loading: sessionLoading || profileLoading,
+    loading: initializing,
     reloadProfile,
-    signOut: () => supabase.auth.signOut(),
+    signOut,
   };
 }

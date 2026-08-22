@@ -13,6 +13,8 @@ import { useShiftTemplates } from '@/src/hooks/useShiftTemplates';
 import { employeeRepository } from '@/src/db/repositories';
 import {
   Employee,
+  EMPLOYEE_PRIORITY_LABELS,
+  EmployeePriority,
   SHIFT_PREFERENCE_LABELS,
   ShiftPreference,
   WEEKDAY_LABELS,
@@ -23,6 +25,7 @@ import { strings } from '@/src/i18n/strings';
 
 const PREFERENCES: ShiftPreference[] = ['nessuna', 'mattina', 'pomeriggio', 'sera'];
 const PREFERENCE_CATEGORIES: Exclude<ShiftPreference, 'nessuna'>[] = ['mattina', 'pomeriggio', 'sera'];
+const PRIORITIES: EmployeePriority[] = ['alta', 'normale', 'bassa'];
 
 export default function NewEmployeeScreen() {
   const router = useRouter();
@@ -40,6 +43,7 @@ export default function NewEmployeeScreen() {
   const [preference, setPreference] = useState<ShiftPreference>('nessuna');
   const [pinnedShiftTemplateIds, setPinnedShiftTemplateIds] = useState<Set<string>>(new Set());
   const [maxByPreference, setMaxByPreference] = useState<Record<string, string>>({});
+  const [priority, setPriority] = useState<EmployeePriority>('normale');
   const [saving, setSaving] = useState(false);
 
   const togglePreferredWeekday = (day: Weekday) => {
@@ -134,6 +138,7 @@ export default function NewEmployeeScreen() {
         pinnedShiftTemplateIds: pinnedShiftTemplateIds.size > 0 ? [...pinnedShiftTemplateIds] : undefined,
         maxWeeklyShiftsByPreference:
           Object.keys(maxWeeklyShiftsByPreference).length > 0 ? maxWeeklyShiftsByPreference : undefined,
+        priority,
         active: true,
       });
       router.back();
@@ -251,6 +256,21 @@ export default function NewEmployeeScreen() {
             label={SHIFT_PREFERENCE_LABELS[pref]}
             selected={preference === pref}
             onPress={() => setPreference(pref)}
+          />
+        ))}
+      </View>
+
+      <Text style={styles.label}>Priorità nella generazione turni</Text>
+      <Text style={styles.hint}>
+        "Alta" viene preferito, "Bassa" viene usato solo se serve davvero.
+      </Text>
+      <View style={styles.chipsRow}>
+        {PRIORITIES.map((p) => (
+          <Chip
+            key={p}
+            label={EMPLOYEE_PRIORITY_LABELS[p]}
+            selected={priority === p}
+            onPress={() => setPriority(p)}
           />
         ))}
       </View>

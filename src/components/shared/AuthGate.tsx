@@ -1,4 +1,4 @@
-import { PropsWithChildren, useState } from 'react';
+import { PropsWithChildren, useMemo, useState } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { useAuth } from '@/src/hooks/useAuth';
 import { AuthProvider } from '@/src/context/AuthContext';
@@ -14,6 +14,14 @@ type OnboardingChoice = 'none' | 'owner' | 'employee';
 export function AuthGate({ children }: PropsWithChildren) {
   const { session, profile, loading, reloadProfile, signOut } = useAuth();
   const [choice, setChoice] = useState<OnboardingChoice>('none');
+
+  // Il valore del contesto deve restare stabile tra un render e l'altro (a parità di dati):
+  // se cambiasse riferimento ad ogni render, ogni schermata che lo consuma (inclusa la barra
+  // delle schede) si ri-renderizzerebbe inutilmente, con il rischio di "saltare" alla Home.
+  const authValue = useMemo(
+    () => ({ session, profile, reloadProfile, signOut }),
+    [session, profile, reloadProfile, signOut]
+  );
 
   if (loading) {
     return (
@@ -44,11 +52,7 @@ export function AuthGate({ children }: PropsWithChildren) {
     );
   }
 
-  return (
-    <AuthProvider value={{ session, profile, reloadProfile, signOut: () => signOut() }}>
-      {children}
-    </AuthProvider>
-  );
+  return <AuthProvider value={authValue}>{children}</AuthProvider>;
 }
 
 const styles = StyleSheet.create({
