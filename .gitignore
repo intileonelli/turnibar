@@ -28,6 +28,10 @@ yarn-error.*
 
 # macOS
 .DS_Store
+
+# Environment variables (chiavi Supabase, mai da caricare su GitHub)
+.env
+.env.local
 *.pem
 
 # local env files

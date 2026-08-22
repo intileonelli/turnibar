@@ -4,14 +4,17 @@ import { ScreenContainer } from '@/src/components/shared/ScreenContainer';
 import { Button } from '@/src/components/shared/Button';
 import { colors } from '@/src/components/shared/colors';
 import { strings } from '@/src/i18n/strings';
+import { useAuth } from '@/src/hooks/useAuth';
 
 export default function HomeScreen() {
   const router = useRouter();
+  const { profile, signOut } = useAuth();
 
   return (
     <ScreenContainer>
       <Text style={styles.title}>{strings.home.title}</Text>
       <Text style={styles.subtitle}>{strings.home.subtitle}</Text>
+      {profile && <Text style={styles.account}>Collegato come {profile.fullName}</Text>}
 
       <View style={styles.actions}>
         <Button label={strings.home.goToEmployees} onPress={() => router.push('/dipendenti')} />
@@ -29,6 +32,8 @@ export default function HomeScreen() {
         />
         <View style={styles.spacer} />
         <Button label={strings.home.goToLeave} variant="secondary" onPress={() => router.push('/ferie')} />
+        <View style={styles.spacer} />
+        <Button label="Esci" variant="danger" onPress={() => signOut()} />
       </View>
     </ScreenContainer>
   );
@@ -43,6 +48,11 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     fontSize: 15,
+    color: colors.textMuted,
+    marginBottom: 8,
+  },
+  account: {
+    fontSize: 13,
     color: colors.textMuted,
     marginBottom: 24,
   },
