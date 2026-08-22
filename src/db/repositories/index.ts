@@ -5,3 +5,4 @@ export * as timeOffRepository from './timeOffRepository';
 export * as shopRepository from './shopRepository';
 export * as shiftTemplateRepository from './shiftTemplateRepository';
 export * as scheduleRepository from './scheduleRepository';
+export * as membershipRepository from './membershipRepository';

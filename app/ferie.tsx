@@ -13,6 +13,7 @@ import { timeOffRepository, shopRepository } from '@/src/db/repositories';
 import { showAlert } from '@/src/utils/alert';
 import { formatDateLong } from '@/src/utils/date';
 import { strings } from '@/src/i18n/strings';
+import { useCurrentAuth } from '@/src/context/AuthContext';
 
 const MONTH_LABELS = [
   'Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno',
@@ -20,10 +21,14 @@ const MONTH_LABELS = [
 ];
 
 export default function LeaveScreen() {
+  const { session, profile } = useCurrentAuth();
+  const isOwner = profile?.role === 'owner';
   const { employees } = useEmployees();
   const { allTimeOff, reload: reloadAllTimeOff } = useAllTimeOff();
   const { settings, reload: reloadSettings } = useShopSettings();
+  const myEmployeeId = employees.find((e) => e.linkedUserId === session?.user.id)?.id ?? null;
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string | null>(null);
+  const effectiveEmployeeId = isOwner ? selectedEmployeeId : myEmployeeId;
   const today = new Date();
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth() + 1);
@@ -33,19 +38,39 @@ export default function LeaveScreen() {
   const markedDates = useMemo(
     () =>
       new Set(
-        allTimeOff.filter((t) => t.employeeId === selectedEmployeeId).map((t) => t.date)
+        allTimeOff.filter((t) => t.employeeId === effectiveEmployeeId).map((t) => t.date)
       ),
-    [allTimeOff, selectedEmployeeId]
+    [allTimeOff, effectiveEmployeeId]
   );
 
   const otherCounts = useMemo(() => {
     const map: Record<string, number> = {};
     for (const t of allTimeOff) {
-      if (t.employeeId === selectedEmployeeId) continue;
+      if (t.employeeId === effectiveEmployeeId) continue;
       map[t.date] = (map[t.date] ?? 0) + 1;
     }
     return map;
-  }, [allTimeOff, selectedEmployeeId]);
+  }, [allTimeOff, effectiveEmployeeId]);
+
+  const employeeNameById = useMemo(
+    () => new Map(employees.map((e) => [e.id, e.name])),
+    [employees]
+  );
+
+  /** Chi è in ferie in ciascun giorno del mese in vista, per mostrare non solo "quanti" ma "chi". */
+  const leaveByDay = useMemo(() => {
+    const monthPrefix = `${year}-${String(month).padStart(2, '0')}`;
+    const map = new Map<string, string[]>();
+    for (const t of allTimeOff) {
+      if (!t.date.startsWith(monthPrefix)) continue;
+      const name = employeeNameById.get(t.employeeId);
+      if (!name) continue;
+      const list = map.get(t.date) ?? [];
+      list.push(name);
+      map.set(t.date, list);
+    }
+    return [...map.entries()].sort(([a], [b]) => a.localeCompare(b));
+  }, [allTimeOff, employeeNameById, year, month]);
 
   const goToPreviousMonth = () => {
     if (month === 1) {
@@ -66,7 +91,7 @@ export default function LeaveScreen() {
   };
 
   const handleDayPress = async (date: string) => {
-    if (!selectedEmployeeId) return;
+    if (!effectiveEmployeeId) return;
     const isCurrentlyMarked = markedDates.has(date);
     if (!isCurrentlyMarked && settings.maxDailyTimeOff !== undefined) {
       const otherCount = otherCounts[date] ?? 0;
@@ -78,7 +103,7 @@ export default function LeaveScreen() {
         return;
       }
     }
-    await timeOffRepository.toggleTimeOff(selectedEmployeeId, date);
+    await timeOffRepository.toggleTimeOff(effectiveEmployeeId, date);
     await reloadAllTimeOff();
   };
 
@@ -106,33 +131,41 @@ export default function LeaveScreen() {
 
   return (
     <ScreenContainer>
-      <View style={styles.settingsBox}>
-        <TextField
-          label={strings.leave.maxPerDay}
-          value={maxPerDayInput}
-          onChangeText={setMaxPerDayInput}
-          onFocus={startEditSettings}
-          keyboardType="numeric"
-          placeholder={settings.maxDailyTimeOff !== undefined ? String(settings.maxDailyTimeOff) : 'Nessun limite'}
-        />
-        <Text style={styles.hint}>{strings.leave.maxPerDayHint}</Text>
-        <Button label={strings.common.save} variant="secondary" onPress={handleSaveSettings} loading={savingSettings} />
-      </View>
+      {isOwner && (
+        <>
+          <View style={styles.settingsBox}>
+            <TextField
+              label={strings.leave.maxPerDay}
+              value={maxPerDayInput}
+              onChangeText={setMaxPerDayInput}
+              onFocus={startEditSettings}
+              keyboardType="numeric"
+              placeholder={settings.maxDailyTimeOff !== undefined ? String(settings.maxDailyTimeOff) : 'Nessun limite'}
+            />
+            <Text style={styles.hint}>{strings.leave.maxPerDayHint}</Text>
+            <Button label={strings.common.save} variant="secondary" onPress={handleSaveSettings} loading={savingSettings} />
+          </View>
 
-      <Text style={styles.sectionTitle}>{strings.leave.selectEmployee}</Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.employeeRow}>
-        {employees.map((employee) => (
-          <Chip
-            key={employee.id}
-            label={employee.name}
-            selected={selectedEmployeeId === employee.id}
-            onPress={() => setSelectedEmployeeId(employee.id)}
-          />
-        ))}
-      </ScrollView>
+          <Text style={styles.sectionTitle}>{strings.leave.selectEmployee}</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.employeeRow}>
+            {employees.map((employee) => (
+              <Chip
+                key={employee.id}
+                label={employee.name}
+                selected={selectedEmployeeId === employee.id}
+                onPress={() => setSelectedEmployeeId(employee.id)}
+              />
+            ))}
+          </ScrollView>
+        </>
+      )}
 
-      {!selectedEmployeeId ? (
-        <Text style={styles.empty}>{strings.leave.noEmployeeSelected}</Text>
+      {!effectiveEmployeeId ? (
+        <Text style={styles.empty}>
+          {isOwner
+            ? strings.leave.noEmployeeSelected
+            : 'Il tuo account non risulta collegato a nessun dipendente: chiedi al titolare.'}
+        </Text>
       ) : (
         <>
           <View style={styles.monthNav}>
@@ -153,6 +186,18 @@ export default function LeaveScreen() {
             maxPerDay={settings.maxDailyTimeOff}
             onDayPress={handleDayPress}
           />
+
+          <Text style={styles.sectionTitle}>Chi è in ferie questo mese</Text>
+          {leaveByDay.length === 0 ? (
+            <Text style={styles.hint}>Nessuno è in ferie questo mese.</Text>
+          ) : (
+            leaveByDay.map(([date, names]) => (
+              <View key={date} style={styles.leaveDayRow}>
+                <Text style={styles.leaveDayDate}>{formatDateLong(date)}</Text>
+                <Text style={styles.leaveDayNames}>{names.join(', ')}</Text>
+              </View>
+            ))
+          )}
         </>
       )}
     </ScreenContainer>
@@ -195,5 +240,23 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.textMuted,
     marginBottom: 12,
+  },
+  leaveDayRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 6,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  leaveDayDate: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.text,
+  },
+  leaveDayNames: {
+    fontSize: 13,
+    color: colors.textMuted,
+    flexShrink: 1,
+    textAlign: 'right',
   },
 });

@@ -49,6 +49,9 @@ export default function ShopScreen() {
             onPress={() => router.push('/negozio/turni-tipo')}
           />
         </View>
+        <View style={styles.navButton}>
+          <Button label="Accessi dipendenti" variant="secondary" onPress={() => router.push('/negozio/accessi')} />
+        </View>
       </View>
 
       <Text style={styles.sectionTitle}>{strings.shop.openingHours}</Text>

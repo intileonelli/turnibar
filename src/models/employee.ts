@@ -40,6 +40,8 @@ export interface Employee {
    */
   maxWeeklyShiftsByPreference?: Partial<Record<Exclude<ShiftPreference, 'nessuna'>, number>>;
   active: boolean;
+  /** Id dell'account collegato a questo dipendente (una volta che si è "identificato" con l'app), se presente. */
+  linkedUserId?: string;
 }
 
 /** Ruoli che il dipendente può coprire, in ordine di preferenza: principale ed eventuale secondario/di riserva. */

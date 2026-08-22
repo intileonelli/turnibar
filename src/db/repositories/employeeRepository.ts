@@ -15,6 +15,7 @@ interface EmployeeRow {
   pinned_shift_template_ids: string[] | null;
   max_weekly_shifts_by_preference: Employee['maxWeeklyShiftsByPreference'] | null;
   active: boolean;
+  user_id: string | null;
 }
 
 function mapRow(row: EmployeeRow): Employee {
@@ -34,6 +35,7 @@ function mapRow(row: EmployeeRow): Employee {
       : undefined,
     maxWeeklyShiftsByPreference: row.max_weekly_shifts_by_preference ?? undefined,
     active: row.active,
+    linkedUserId: row.user_id ?? undefined,
   };
 }
 
@@ -56,6 +58,7 @@ function toRow(input: Omit<Employee, 'id'>) {
         ? input.maxWeeklyShiftsByPreference
         : null,
     active: input.active,
+    user_id: input.linkedUserId ?? null,
   };
 }
 

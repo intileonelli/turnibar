@@ -16,6 +16,7 @@ import { unavailabilityRepository, timeOffRepository } from '@/src/db/repositori
 import { ShiftAssignment, ShiftTemplate, TimeOff, Unavailability } from '@/src/models';
 import { formatDateLong } from '@/src/utils/date';
 import { strings } from '@/src/i18n/strings';
+import { useCurrentAuth } from '@/src/context/AuthContext';
 
 interface PickerTarget {
   template: ShiftTemplate;
@@ -26,6 +27,8 @@ interface PickerTarget {
 
 export default function CalendarScreen() {
   const router = useRouter();
+  const { profile } = useCurrentAuth();
+  const isOwner = profile?.role === 'owner';
   const { weekStartDate, goToNextWeek, goToPreviousWeek, goToCurrentWeek } = useScheduleStore();
   const { schedule, assignments, reassign, removeAssignment, addManualAssignment } = useSchedule(weekStartDate);
   const { employees } = useEmployees();
@@ -44,6 +47,7 @@ export default function CalendarScreen() {
   );
 
   const handleAssignmentPress = (assignment: ShiftAssignment, template: ShiftTemplate) => {
+    if (!isOwner) return;
     let roleIds = assignment.roleIds;
     if (!roleIds) {
       // Assegnazione generata prima dell'introduzione di roleIds sull'assegnazione: si ricava
@@ -63,6 +67,7 @@ export default function CalendarScreen() {
   };
 
   const handleEmptySlotPress = (template: ShiftTemplate, date: string, roleIds: string[]) => {
+    if (!isOwner) return;
     setPickerTarget({ template, date, roleIds });
   };
 
@@ -104,9 +109,11 @@ export default function CalendarScreen() {
         <View style={styles.actionButton}>
           <Button label={strings.calendar.currentWeek} variant="secondary" onPress={goToCurrentWeek} />
         </View>
-        <View style={styles.actionButton}>
-          <Button label={strings.calendar.generate} onPress={() => router.push('/calendario/genera')} />
-        </View>
+        {isOwner && (
+          <View style={styles.actionButton}>
+            <Button label={strings.calendar.generate} onPress={() => router.push('/calendario/genera')} />
+          </View>
+        )}
       </View>
 
       {!schedule && <Text style={styles.empty}>{strings.calendar.noSchedule}</Text>}

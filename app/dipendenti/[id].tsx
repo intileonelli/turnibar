@@ -369,6 +369,37 @@ export default function EditEmployeeScreen() {
       <SwitchRow label={strings.employees.active} value={active} onValueChange={setActive} />
 
       <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Accesso all'app</Text>
+        {employee.linkedUserId ? (
+          <>
+            <Text style={styles.muted}>Questo dipendente ha già collegato il proprio account.</Text>
+            <Button
+              label="Scollega account"
+              variant="danger"
+              onPress={() =>
+                confirmAction(
+                  'Scollegare l\'account?',
+                  'Il dipendente dovrà chiedere al titolare un nuovo codice per ricollegarsi. Usalo solo se si è identificato per sbaglio.',
+                  async () => {
+                    await employeeRepository.updateEmployee({ ...employee, linkedUserId: undefined });
+                    load();
+                  },
+                  'Scollega',
+                  true
+                )
+              }
+            />
+          </>
+        ) : (
+          <Text style={styles.muted}>
+            Nessun account collegato: questo dipendente può collegarsi registrandosi nell'app con
+            il codice azienda (lo trovi in Negozio → Accessi dipendenti) e scegliendo il proprio
+            nome dall'elenco.
+          </Text>
+        )}
+      </View>
+
+      <View style={styles.section}>
         <Text style={styles.sectionTitle}>{strings.employees.unavailabilities}</Text>
         {unavailabilities.length === 0 && (
           <Text style={styles.muted}>{strings.employees.noUnavailabilities}</Text>
