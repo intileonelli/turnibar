@@ -18,7 +18,7 @@ interface AssignmentPickerModalProps {
   onClose: () => void;
   template: ShiftTemplate | null;
   date: string;
-  roleId: string;
+  roleIds: string[];
   employees: Employee[];
   roles: Role[];
   currentAssignmentId?: string;
@@ -35,7 +35,7 @@ export function AssignmentPickerModal({
   onClose,
   template,
   date,
-  roleId,
+  roleIds,
   employees,
   roles,
   currentAssignmentId,
@@ -48,15 +48,26 @@ export function AssignmentPickerModal({
 }: AssignmentPickerModalProps) {
   if (!template) return null;
 
+  const priorityOf = (employee: Employee) => {
+    const primaryIndex = roleIds.indexOf(employee.roleId);
+    const secondaryIndex = employee.secondaryRoleId ? roleIds.indexOf(employee.secondaryRoleId) : -1;
+    const matched = [primaryIndex, secondaryIndex].filter((i) => i !== -1);
+    return matched.length ? Math.min(...matched) : roleIds.length;
+  };
+
   const candidates = [...employees]
     .filter((e) => e.active)
     .sort((a, b) => {
-      if (a.roleId === roleId && b.roleId !== roleId) return -1;
-      if (a.roleId !== roleId && b.roleId === roleId) return 1;
+      const priorityDiff = priorityOf(a) - priorityOf(b);
+      if (priorityDiff !== 0) return priorityDiff;
       return a.name.localeCompare(b.name);
     });
 
   const roleName = (id: string) => roles.find((r) => r.id === id)?.name ?? id;
+  const employeeRoleLabel = (employee: Employee) =>
+    employee.secondaryRoleId
+      ? `${roleName(employee.roleId)} (+ ${roleName(employee.secondaryRoleId)})`
+      : roleName(employee.roleId);
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
@@ -88,7 +99,7 @@ export function AssignmentPickerModal({
                   weekday: template.weekday,
                   startTime: template.startTime,
                   endTime: template.endTime,
-                  roleId,
+                  roleIds,
                 },
                 otherAssignmentsForEmployee: otherAssignments,
                 unavailabilities,
@@ -101,7 +112,7 @@ export function AssignmentPickerModal({
                 <Pressable style={styles.row} onPress={() => onSelectEmployee(item.id)}>
                   <View style={styles.rowInfo}>
                     <Text style={styles.rowName}>{item.name}</Text>
-                    <Text style={styles.rowRole}>{roleName(item.roleId)}</Text>
+                    <Text style={styles.rowRole}>{employeeRoleLabel(item)}</Text>
                     {violations.length > 0 && (
                       <View style={styles.violationsRow}>
                         {hardViolations.map((v, i) => (

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Alert, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ScreenContainer } from '@/src/components/shared/ScreenContainer';
 import { Button } from '@/src/components/shared/Button';
@@ -12,6 +12,7 @@ import { useRoles } from '@/src/hooks/useRoles';
 import { ScheduleResult } from '@/src/engine';
 import { formatDateLong } from '@/src/utils/date';
 import { WEEKDAY_LABELS } from '@/src/models';
+import { confirmAction } from '@/src/utils/alert';
 import { strings } from '@/src/i18n/strings';
 
 export default function GenerateScheduleScreen() {
@@ -22,6 +23,7 @@ export default function GenerateScheduleScreen() {
   const [result, setResult] = useState<ScheduleResult | null>(null);
 
   const roleName = (roleId: string) => roles.find((r) => r.id === roleId)?.name ?? roleId;
+  const roleNames = (roleIds: string[]) => roleIds.map(roleName).join(' → ');
 
   const runGeneration = async () => {
     const generated = await generate();
@@ -30,10 +32,12 @@ export default function GenerateScheduleScreen() {
 
   const handlePress = () => {
     if (schedule) {
-      Alert.alert(strings.calendar.regenerateConfirmTitle, strings.calendar.regenerateConfirmMessage, [
-        { text: strings.common.cancel, style: 'cancel' },
-        { text: strings.common.confirm, onPress: runGeneration },
-      ]);
+      confirmAction(
+        strings.calendar.regenerateConfirmTitle,
+        strings.calendar.regenerateConfirmMessage,
+        runGeneration,
+        strings.common.confirm
+      );
     } else {
       runGeneration();
     }
@@ -71,7 +75,7 @@ export default function GenerateScheduleScreen() {
                 <Text style={styles.unresolvedTitle}>
                   {u.shiftName} · {WEEKDAY_LABELS[u.weekday]} {formatDateLong(u.date)}
                 </Text>
-                <Badge label={`${roleName(u.roleId)}: mancano ${u.missingCount}`} tone="danger" />
+                <Badge label={`${roleNames(u.roleIds)}: mancano ${u.missingCount}`} tone="danger" />
                 <Text style={styles.unresolvedReason}>{u.reason}</Text>
               </Card>
             ))

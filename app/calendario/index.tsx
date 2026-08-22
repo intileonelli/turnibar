@@ -20,7 +20,7 @@ import { strings } from '@/src/i18n/strings';
 interface PickerTarget {
   template: ShiftTemplate;
   date: string;
-  roleId: string;
+  roleIds: string[];
   currentAssignmentId?: string;
 }
 
@@ -44,17 +44,26 @@ export default function CalendarScreen() {
   );
 
   const handleAssignmentPress = (assignment: ShiftAssignment, template: ShiftTemplate) => {
-    const employee = employees.find((e) => e.id === assignment.employeeId);
+    let roleIds = assignment.roleIds;
+    if (!roleIds) {
+      // Assegnazione generata prima dell'introduzione di roleIds sull'assegnazione: si ricava
+      // il requisito più probabile dal ruolo del dipendente.
+      const employee = employees.find((e) => e.id === assignment.employeeId);
+      const matchingRequirement = employee
+        ? template.requirements.find((r) => r.roleIds.includes(employee.roleId))
+        : undefined;
+      roleIds = matchingRequirement?.roleIds ?? template.requirements[0]?.roleIds ?? [];
+    }
     setPickerTarget({
       template,
       date: assignment.date,
-      roleId: employee?.roleId ?? template.requirements[0]?.roleId,
+      roleIds,
       currentAssignmentId: assignment.id,
     });
   };
 
-  const handleEmptySlotPress = (template: ShiftTemplate, date: string, roleId: string) => {
-    setPickerTarget({ template, date, roleId });
+  const handleEmptySlotPress = (template: ShiftTemplate, date: string, roleIds: string[]) => {
+    setPickerTarget({ template, date, roleIds });
   };
 
   const handleSelectEmployee = async (employeeId: string) => {
@@ -66,6 +75,7 @@ export default function CalendarScreen() {
         shiftTemplateId: pickerTarget.template.id,
         date: pickerTarget.date,
         employeeId,
+        roleIds: pickerTarget.roleIds,
       });
     }
     setPickerTarget(null);
@@ -79,7 +89,7 @@ export default function CalendarScreen() {
   };
 
   return (
-    <ScreenContainer scroll={false}>
+    <ScreenContainer>
       <View style={styles.weekNav}>
         <Button label="←" variant="secondary" onPress={goToPreviousWeek} />
         <View style={styles.weekLabelContainer}>
@@ -116,7 +126,7 @@ export default function CalendarScreen() {
         onClose={() => setPickerTarget(null)}
         template={pickerTarget?.template ?? null}
         date={pickerTarget?.date ?? ''}
-        roleId={pickerTarget?.roleId ?? ''}
+        roleIds={pickerTarget?.roleIds ?? []}
         employees={employees}
         roles={roles}
         currentAssignmentId={pickerTarget?.currentAssignmentId}

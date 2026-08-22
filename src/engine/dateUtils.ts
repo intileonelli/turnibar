@@ -1,8 +1,16 @@
 import { ShiftPreference, Weekday } from '@/src/models';
 
-/** Converte "HH:mm" in minuti dalla mezzanotte, per confronti numerici semplici. */
+/**
+ * Converte un orario in minuti dalla mezzanotte, per confronti numerici semplici. Accetta sia
+ * "HH:mm" che "HH.mm" (e ore/minuti con o senza zero iniziale, es. "6.30"), così un orario
+ * inserito con un formato leggermente diverso non rompe silenziosamente l'ordinamento o i
+ * calcoli di durata (portando a NaN).
+ */
 export function timeToMinutes(time: string): number {
-  const [h, m] = time.split(':').map(Number);
+  const match = time.trim().match(/^(\d{1,2})[:.](\d{1,2})$/);
+  if (!match) return 0;
+  const h = Number(match[1]);
+  const m = Number(match[2]);
   return h * 60 + m;
 }
 

@@ -11,9 +11,13 @@ export interface OpeningHours {
   closeTime: string;
 }
 
-/** Numero di dipendenti richiesti per un ruolo in un turno tipo. */
+/**
+ * Numero di dipendenti richiesti in un turno tipo, con i ruoli accettabili in ordine di
+ * priorità: roleIds[0] è il ruolo principale, gli altri sono alternative usate solo quando
+ * il principale non è disponibile (es. Cuoca, altrimenti Barista esperto).
+ */
 export interface RoleRequirement {
-  roleId: string;
+  roleIds: string[];
   count: number;
 }
 
@@ -27,4 +31,10 @@ export interface ShiftTemplate {
   /** Orario in formato "HH:mm". */
   endTime: string;
   requirements: RoleRequirement[];
+}
+
+/** Impostazioni generali del negozio. */
+export interface ShopSettings {
+  /** Numero massimo di dipendenti che possono essere in ferie nello stesso giorno, opzionale. */
+  maxDailyTimeOff?: number;
 }

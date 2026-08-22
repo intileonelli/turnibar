@@ -18,6 +18,13 @@ export interface ShiftAssignment {
   /** Data in formato "YYYY-MM-DD". */
   date: string;
   employeeId: string;
+  /**
+   * Ruoli del requisito specifico che questa assegnazione riempie, in ordine di priorità.
+   * Identifica esattamente a quale posto del turno appartiene, per non doverlo "indovinare"
+   * dal ruolo del dipendente quando un turno ha più requisiti con ruoli che si sovrappongono.
+   * Assente solo per assegnazioni generate prima dell'introduzione di questo campo.
+   */
+  roleIds?: string[];
   /** True se l'assegnazione è stata modificata a mano dopo la generazione automatica. */
   manuallyEdited: boolean;
 }

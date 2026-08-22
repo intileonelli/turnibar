@@ -1,4 +1,5 @@
 import { TimeOff, Unavailability } from '@/src/models';
+import { shiftPreferenceCategory } from './dateUtils';
 import { Slot } from './types';
 
 /** Dati precalcolati dall'input, immutabili durante la risoluzione. */
@@ -37,6 +38,8 @@ interface TimeRange {
 export class SolverState {
   hoursByEmployee = new Map<string, number>();
   shiftsByEmployee = new Map<string, number>();
+  /** Turni per dipendente e fascia oraria (mattina/pomeriggio/sera), chiave `${employeeId}|${category}`. */
+  shiftsByEmployeeCategory = new Map<string, number>();
   rangesByEmployeeDate = new Map<string, Map<string, TimeRange[]>>();
   assignmentBySlotId = new Map<string, string>();
 
@@ -48,14 +51,32 @@ export class SolverState {
     return this.shiftsByEmployee.get(employeeId) ?? 0;
   }
 
+  getCategoryShiftCount(employeeId: string, category: string): number {
+    return this.shiftsByEmployeeCategory.get(`${employeeId}|${category}`) ?? 0;
+  }
+
   getRangesOn(employeeId: string, date: string): TimeRange[] {
     return this.rangesByEmployeeDate.get(employeeId)?.get(date) ?? [];
+  }
+
+  getDaysWorked(employeeId: string): number {
+    const byDate = this.rangesByEmployeeDate.get(employeeId);
+    if (!byDate) return 0;
+    let count = 0;
+    for (const ranges of byDate.values()) {
+      if (ranges.length > 0) count++;
+    }
+    return count;
   }
 
   assign(slot: Slot, employeeId: string, durationHours: number): void {
     this.assignmentBySlotId.set(slot.slotId, employeeId);
     this.hoursByEmployee.set(employeeId, this.getHours(employeeId) + durationHours);
     this.shiftsByEmployee.set(employeeId, this.getShiftCount(employeeId) + 1);
+
+    const category = shiftPreferenceCategory(slot.startTime);
+    const categoryKey = `${employeeId}|${category}`;
+    this.shiftsByEmployeeCategory.set(categoryKey, this.getCategoryShiftCount(employeeId, category) + 1);
 
     const byDate = this.rangesByEmployeeDate.get(employeeId) ?? new Map<string, TimeRange[]>();
     const ranges = byDate.get(slot.date) ?? [];
@@ -68,6 +89,10 @@ export class SolverState {
     this.assignmentBySlotId.delete(slot.slotId);
     this.hoursByEmployee.set(employeeId, this.getHours(employeeId) - durationHours);
     this.shiftsByEmployee.set(employeeId, this.getShiftCount(employeeId) - 1);
+
+    const category = shiftPreferenceCategory(slot.startTime);
+    const categoryKey = `${employeeId}|${category}`;
+    this.shiftsByEmployeeCategory.set(categoryKey, this.getCategoryShiftCount(employeeId, category) - 1);
 
     const ranges = this.rangesByEmployeeDate.get(employeeId)?.get(slot.date);
     if (ranges) {

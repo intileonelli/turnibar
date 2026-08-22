@@ -1,4 +1,4 @@
-import { dateForWeekday, rangesOverlap, shiftDurationHours, shiftPreferenceCategory } from '../dateUtils';
+import { dateForWeekday, rangesOverlap, shiftDurationHours, shiftPreferenceCategory, timeToMinutes } from '../dateUtils';
 
 describe('dateForWeekday', () => {
   it('restituisce la stessa data per weekday 1 (lunedì)', () => {
@@ -30,5 +30,21 @@ describe('shiftDurationHours', () => {
   it('calcola la durata in ore', () => {
     expect(shiftDurationHours('09:00', '13:00')).toBe(4);
     expect(shiftDurationHours('17:30', '21:00')).toBe(3.5);
+  });
+});
+
+describe('timeToMinutes', () => {
+  it('interpreta correttamente "HH:mm" standard', () => {
+    expect(timeToMinutes('06:30')).toBe(390);
+    expect(timeToMinutes('00:00')).toBe(0);
+  });
+
+  it('interpreta correttamente orari con il punto invece dei due punti', () => {
+    expect(timeToMinutes('6.30')).toBe(390);
+    expect(timeToMinutes('06.30')).toBe(390);
+  });
+
+  it('interpreta correttamente ore senza lo zero iniziale', () => {
+    expect(timeToMinutes('6:30')).toBe(390);
   });
 });

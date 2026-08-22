@@ -31,7 +31,7 @@ describe('generateSchedule', () => {
         name: 'Mattina',
         startTime: '09:00',
         endTime: '13:00',
-        requirements: [{ roleId: ROLE_COMMESSO.id, count: 1 }],
+        requirements: [{ roleIds: [ROLE_COMMESSO.id], count: 1 }],
       },
       {
         id: 'shift-pomeriggio',
@@ -39,7 +39,7 @@ describe('generateSchedule', () => {
         name: 'Pomeriggio',
         startTime: '13:00',
         endTime: '17:00',
-        requirements: [{ roleId: ROLE_CASSIERE.id, count: 1 }],
+        requirements: [{ roleIds: [ROLE_CASSIERE.id], count: 1 }],
       },
     ];
 
@@ -75,7 +75,7 @@ describe('generateSchedule', () => {
         name: 'Mattina',
         startTime: '09:00',
         endTime: '13:00',
-        requirements: [{ roleId: ROLE_COMMESSO.id, count: 1 }],
+        requirements: [{ roleIds: [ROLE_COMMESSO.id], count: 1 }],
       },
     ];
 
@@ -106,7 +106,7 @@ describe('generateSchedule', () => {
         name: 'Mattina',
         startTime: '09:00',
         endTime: '13:00',
-        requirements: [{ roleId: ROLE_COMMESSO.id, count: 1 }],
+        requirements: [{ roleIds: [ROLE_COMMESSO.id], count: 1 }],
       },
     ];
 
@@ -124,7 +124,7 @@ describe('generateSchedule', () => {
     expect(result.assignments).toHaveLength(0);
     expect(result.unresolvedShifts).toHaveLength(1);
     expect(result.unresolvedShifts[0].missingCount).toBe(1);
-    expect(result.unresolvedShifts[0].roleId).toBe(ROLE_COMMESSO.id);
+    expect(result.unresolvedShifts[0].roleIds).toEqual([ROLE_COMMESSO.id]);
   });
 
   it('segnala chiaramente un turno non copribile invece di ometterlo silenziosamente', () => {
@@ -138,7 +138,7 @@ describe('generateSchedule', () => {
         name: 'Cassa',
         startTime: '09:00',
         endTime: '13:00',
-        requirements: [{ roleId: ROLE_CASSIERE.id, count: 2 }],
+        requirements: [{ roleIds: [ROLE_CASSIERE.id], count: 2 }],
       },
     ];
 
@@ -157,7 +157,7 @@ describe('generateSchedule', () => {
     expect(result.unresolvedShifts).toHaveLength(1);
     expect(result.unresolvedShifts[0]).toMatchObject({
       shiftTemplateId: 'shift-cassa',
-      roleId: ROLE_CASSIERE.id,
+      roleIds: [ROLE_CASSIERE.id],
       missingCount: 2,
     });
     expect(result.unresolvedShifts[0].reason.length).toBeGreaterThan(0);
@@ -183,7 +183,7 @@ describe('generateSchedule', () => {
       name: 'Mattina',
       startTime: '09:00',
       endTime: '13:00',
-      requirements: [{ roleId: ROLE_COMMESSO.id, count: 1 }],
+      requirements: [{ roleIds: [ROLE_COMMESSO.id], count: 1 }],
     }));
 
     const result = generateSchedule(
@@ -224,7 +224,7 @@ describe('generateSchedule', () => {
       name: 'Mattina',
       startTime: '09:00',
       endTime: '13:00',
-      requirements: [{ roleId: ROLE_COMMESSO.id, count: 1 }],
+      requirements: [{ roleIds: [ROLE_COMMESSO.id], count: 1 }],
     }));
 
     const result = generateSchedule(
@@ -258,7 +258,7 @@ describe('generateSchedule', () => {
         name: 'Turno A',
         startTime: '09:00',
         endTime: '14:00',
-        requirements: [{ roleId: ROLE_COMMESSO.id, count: 1 }],
+        requirements: [{ roleIds: [ROLE_COMMESSO.id], count: 1 }],
       },
       {
         id: 'shift-b',
@@ -266,7 +266,7 @@ describe('generateSchedule', () => {
         name: 'Turno B',
         startTime: '13:00',
         endTime: '17:00',
-        requirements: [{ roleId: ROLE_COMMESSO.id, count: 1 }],
+        requirements: [{ roleIds: [ROLE_COMMESSO.id], count: 1 }],
       },
     ];
 
@@ -307,7 +307,7 @@ describe('generateSchedule', () => {
         name: 'Mattina',
         startTime: '09:00',
         endTime: '13:00',
-        requirements: [{ roleId: ROLE_COMMESSO.id, count: 1 }],
+        requirements: [{ roleIds: [ROLE_COMMESSO.id], count: 1 }],
       },
     ];
 
@@ -348,7 +348,7 @@ describe('generateSchedule', () => {
       name: 'Mattina',
       startTime: '09:00',
       endTime: '13:00',
-      requirements: [{ roleId: ROLE_COMMESSO.id, count: 1 }],
+      requirements: [{ roleIds: [ROLE_COMMESSO.id], count: 1 }],
     }));
 
     const result = generateSchedule(
@@ -368,5 +368,309 @@ describe('generateSchedule', () => {
     // Il full-time (30h contrattuali) deve ricevere più ore assolute del part-time (10h contrattuali).
     expect(fullHours).toBeGreaterThan(partHours);
     expect(result.unresolvedShifts).toHaveLength(0);
+  });
+
+  it('preferisce il ruolo principale ma usa l\'alternativa se il principale non è disponibile', () => {
+    const ROLE_CUOCA = 'role-cuoca';
+    const ROLE_BARISTA = 'role-barista';
+
+    const cuoca = makeEmployee({ id: 'cuoca', name: 'Cuoca', roleId: ROLE_CUOCA });
+    const barista = makeEmployee({ id: 'barista', name: 'Barista', roleId: ROLE_BARISTA });
+
+    const shiftTemplates: ShiftTemplate[] = [
+      {
+        id: 'shift-cucina',
+        weekday: 1,
+        name: 'Cucina',
+        startTime: '09:00',
+        endTime: '13:00',
+        requirements: [{ roleIds: [ROLE_CUOCA, ROLE_BARISTA], count: 1 }],
+      },
+    ];
+
+    // Caso 1: la cuoca è disponibile -> deve essere scelta lei, non l'alternativa.
+    const withPrimary = generateSchedule(
+      {
+        weekStartDate: WEEK_START,
+        employees: [cuoca, barista],
+        shiftTemplates,
+        unavailabilities: [],
+        timeOff: [],
+      },
+      ROLES
+    );
+    expect(withPrimary.assignments[0].employeeId).toBe('cuoca');
+
+    // Caso 2: la cuoca è in ferie -> deve intervenire l'alternativa (barista).
+    const withoutPrimary = generateSchedule(
+      {
+        weekStartDate: WEEK_START,
+        employees: [cuoca, barista],
+        shiftTemplates,
+        unavailabilities: [],
+        timeOff: [{ id: 't1', employeeId: 'cuoca', date: WEEK_START }],
+      },
+      ROLES
+    );
+    expect(withoutPrimary.assignments[0].employeeId).toBe('barista');
+    expect(withoutPrimary.unresolvedShifts).toHaveLength(0);
+  });
+
+  it('copre i turni anche se il dipendente non ha ore contrattuali/massime impostate', () => {
+    const anna = makeEmployee({
+      id: 'anna',
+      name: 'Anna',
+      roleId: ROLE_COMMESSO.id,
+      weeklyContractHours: undefined,
+      maxWeeklyHours: undefined,
+    });
+
+    const shiftTemplates: ShiftTemplate[] = [
+      {
+        id: 'shift-mattina',
+        weekday: 1,
+        name: 'Mattina',
+        startTime: '09:00',
+        endTime: '13:00',
+        requirements: [{ roleIds: [ROLE_COMMESSO.id], count: 1 }],
+      },
+    ];
+
+    const result = generateSchedule(
+      {
+        weekStartDate: WEEK_START,
+        employees: [anna],
+        shiftTemplates,
+        unavailabilities: [],
+        timeOff: [],
+      },
+      ROLES
+    );
+
+    expect(result.assignments).toHaveLength(1);
+    expect(result.assignments[0].employeeId).toBe('anna');
+    expect(result.unresolvedShifts).toHaveLength(0);
+  });
+
+  it('rispetta il numero massimo di giorni lavorativi a settimana (vincolo hard)', () => {
+    const anna = makeEmployee({
+      id: 'anna',
+      name: 'Anna',
+      roleId: ROLE_COMMESSO.id,
+      maxWeeklyDays: 1,
+    });
+    const bruno = makeEmployee({ id: 'bruno', name: 'Bruno', roleId: ROLE_COMMESSO.id });
+
+    const shiftTemplates: ShiftTemplate[] = [
+      {
+        id: 'shift-lun',
+        weekday: 1,
+        name: 'Mattina',
+        startTime: '09:00',
+        endTime: '13:00',
+        requirements: [{ roleIds: [ROLE_COMMESSO.id], count: 1 }],
+      },
+      {
+        id: 'shift-mar',
+        weekday: 2,
+        name: 'Mattina',
+        startTime: '09:00',
+        endTime: '13:00',
+        requirements: [{ roleIds: [ROLE_COMMESSO.id], count: 1 }],
+      },
+    ];
+
+    const result = generateSchedule(
+      {
+        weekStartDate: WEEK_START,
+        employees: [anna, bruno],
+        shiftTemplates,
+        unavailabilities: [],
+        timeOff: [],
+      },
+      ROLES
+    );
+
+    expect(result.unresolvedShifts).toHaveLength(0);
+    const annaDates = new Set(
+      result.assignments.filter((a) => a.employeeId === 'anna').map((a) => a.date)
+    );
+    expect(annaDates.size).toBeLessThanOrEqual(1);
+  });
+
+  it('usa il ruolo secondario del dipendente quando il ruolo principale non copre il turno', () => {
+    const ROLE_CUOCA = 'role-cuoca';
+    const ROLE_BARISTA = 'role-barista';
+
+    const bruno = makeEmployee({
+      id: 'bruno',
+      name: 'Bruno',
+      roleId: ROLE_BARISTA,
+      secondaryRoleId: ROLE_CUOCA,
+    });
+
+    const shiftTemplates: ShiftTemplate[] = [
+      {
+        id: 'shift-cucina',
+        weekday: 1,
+        name: 'Cucina',
+        startTime: '09:00',
+        endTime: '13:00',
+        requirements: [{ roleIds: [ROLE_CUOCA], count: 1 }],
+      },
+    ];
+
+    const result = generateSchedule(
+      {
+        weekStartDate: WEEK_START,
+        employees: [bruno],
+        shiftTemplates,
+        unavailabilities: [],
+        timeOff: [],
+      },
+      ROLES
+    );
+
+    expect(result.assignments).toHaveLength(1);
+    expect(result.assignments[0].employeeId).toBe('bruno');
+    expect(result.unresolvedShifts).toHaveLength(0);
+  });
+
+  it('preferisce assegnare i turni nei giorni preferiti del dipendente (vincolo soft)', () => {
+    const anna = makeEmployee({
+      id: 'anna',
+      name: 'Anna',
+      roleId: ROLE_COMMESSO.id,
+      preferredWeekdays: [6, 7],
+    });
+    const bruno = makeEmployee({ id: 'bruno', name: 'Bruno', roleId: ROLE_COMMESSO.id });
+
+    const shiftTemplates: ShiftTemplate[] = [
+      {
+        id: 'shift-sabato',
+        weekday: 6,
+        name: 'Mattina',
+        startTime: '09:00',
+        endTime: '13:00',
+        requirements: [{ roleIds: [ROLE_COMMESSO.id], count: 1 }],
+      },
+    ];
+
+    const result = generateSchedule(
+      {
+        weekStartDate: WEEK_START,
+        employees: [anna, bruno],
+        shiftTemplates,
+        unavailabilities: [],
+        timeOff: [],
+      },
+      ROLES
+    );
+
+    expect(result.assignments[0].employeeId).toBe('anna');
+  });
+
+  it('assegna il turno fisso al dipendente pinnato quando è idoneo', () => {
+    const shiftTemplates: ShiftTemplate[] = [
+      {
+        id: 'shift-sera1-mar',
+        weekday: 2,
+        name: 'Sera 1',
+        startTime: '18:00',
+        endTime: '22:00',
+        requirements: [{ roleIds: [ROLE_COMMESSO.id], count: 1 }],
+      },
+    ];
+
+    const anna = makeEmployee({
+      id: 'anna',
+      name: 'Anna',
+      roleId: ROLE_COMMESSO.id,
+      pinnedShiftTemplateIds: ['shift-sera1-mar'],
+    });
+    const bruno = makeEmployee({ id: 'bruno', name: 'Bruno', roleId: ROLE_COMMESSO.id });
+
+    const result = generateSchedule(
+      {
+        weekStartDate: WEEK_START,
+        employees: [bruno, anna], // bruno prima nell'elenco, ma anna deve vincere comunque
+        shiftTemplates,
+        unavailabilities: [],
+        timeOff: [],
+      },
+      ROLES
+    );
+
+    expect(result.assignments[0].employeeId).toBe('anna');
+  });
+
+  it('assegna il turno fisso a qualcun altro se il dipendente pinnato non è disponibile', () => {
+    const shiftTemplates: ShiftTemplate[] = [
+      {
+        id: 'shift-sera1-mar',
+        weekday: 2,
+        name: 'Sera 1',
+        startTime: '18:00',
+        endTime: '22:00',
+        requirements: [{ roleIds: [ROLE_COMMESSO.id], count: 1 }],
+      },
+    ];
+
+    const anna = makeEmployee({
+      id: 'anna',
+      name: 'Anna',
+      roleId: ROLE_COMMESSO.id,
+      pinnedShiftTemplateIds: ['shift-sera1-mar'],
+    });
+    const bruno = makeEmployee({ id: 'bruno', name: 'Bruno', roleId: ROLE_COMMESSO.id });
+
+    const result = generateSchedule(
+      {
+        weekStartDate: WEEK_START,
+        employees: [anna, bruno],
+        shiftTemplates,
+        unavailabilities: [],
+        timeOff: [{ id: 't1', employeeId: 'anna', date: '2026-08-04' }], // martedì della settimana
+      },
+      ROLES
+    );
+
+    expect(result.assignments).toHaveLength(1);
+    expect(result.assignments[0].employeeId).toBe('bruno');
+    expect(result.unresolvedShifts).toHaveLength(0);
+  });
+
+  it('rispetta il limite massimo di turni per fascia oraria (indipendente per fascia)', () => {
+    const anna = makeEmployee({
+      id: 'anna',
+      name: 'Anna',
+      roleId: ROLE_COMMESSO.id,
+      maxWeeklyShiftsByPreference: { sera: 1 },
+    });
+    const bruno = makeEmployee({ id: 'bruno', name: 'Bruno', roleId: ROLE_COMMESSO.id });
+
+    const shiftTemplates: ShiftTemplate[] = [1, 2].map((weekday) => ({
+      id: `shift-sera-${weekday}`,
+      weekday: weekday as 1 | 2,
+      name: 'Sera',
+      startTime: '18:00',
+      endTime: '22:00',
+      requirements: [{ roleIds: [ROLE_COMMESSO.id], count: 1 }],
+    }));
+
+    const result = generateSchedule(
+      {
+        weekStartDate: WEEK_START,
+        employees: [anna, bruno],
+        shiftTemplates,
+        unavailabilities: [],
+        timeOff: [],
+      },
+      ROLES
+    );
+
+    expect(result.unresolvedShifts).toHaveLength(0);
+    const annaSeraCount = result.assignments.filter((a) => a.employeeId === 'anna').length;
+    expect(annaSeraCount).toBeLessThanOrEqual(1);
   });
 });

@@ -75,7 +75,7 @@ export function useSchedule(weekStartDate: string) {
   );
 
   const addManualAssignment = useCallback(
-    async (input: { shiftTemplateId: string; date: string; employeeId: string }) => {
+    async (input: { shiftTemplateId: string; date: string; employeeId: string; roleIds: string[] }) => {
       if (!schedule) return;
       await scheduleRepository.addManualAssignment({ scheduleId: schedule.id, ...input });
       await reload();

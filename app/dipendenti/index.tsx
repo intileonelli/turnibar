@@ -31,6 +31,7 @@ export default function EmployeeListScreen() {
           <EmployeeCard
             employee={item}
             role={roleById.get(item.roleId)}
+            secondaryRole={item.secondaryRoleId ? roleById.get(item.secondaryRoleId) : undefined}
             onPress={() => router.push(`/dipendenti/${item.id}`)}
           />
         )}

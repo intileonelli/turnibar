@@ -12,14 +12,14 @@ function buildSlots(input: EngineInput): Slot[] {
     for (const requirement of template.requirements) {
       for (let unit = 0; unit < requirement.count; unit++) {
         slots.push({
-          slotId: `${template.id}-${date}-${requirement.roleId}-${unit}`,
+          slotId: `${template.id}-${date}-${requirement.roleIds.join('_')}-${unit}`,
           shiftTemplateId: template.id,
           shiftName: template.name,
           date,
           weekday: template.weekday,
           startTime: template.startTime,
           endTime: template.endTime,
-          roleId: requirement.roleId,
+          roleIds: requirement.roleIds,
         });
       }
     }
@@ -27,14 +27,14 @@ function buildSlots(input: EngineInput): Slot[] {
   return slots;
 }
 
-function roleName(roleId: string, roles: Role[]): string {
-  return roles.find((r) => r.id === roleId)?.name ?? roleId;
+function roleNames(roleIds: string[], roles: Role[]): string {
+  return roleIds.map((id) => roles.find((r) => r.id === id)?.name ?? id).join(' → ');
 }
 
 function buildUnresolvedShifts(unresolvedSlots: Slot[], roles: Role[]): UnresolvedShift[] {
   const grouped = new Map<string, UnresolvedShift>();
   for (const slot of unresolvedSlots) {
-    const key = `${slot.shiftTemplateId}-${slot.date}-${slot.roleId}`;
+    const key = `${slot.shiftTemplateId}-${slot.date}-${slot.roleIds.join('_')}`;
     const existing = grouped.get(key);
     if (existing) {
       existing.missingCount += 1;
@@ -44,9 +44,9 @@ function buildUnresolvedShifts(unresolvedSlots: Slot[], roles: Role[]): Unresolv
         date: slot.date,
         weekday: slot.weekday,
         shiftName: slot.shiftName,
-        roleId: slot.roleId,
+        roleIds: slot.roleIds,
         missingCount: 1,
-        reason: `Nessun dipendente disponibile per il ruolo "${roleName(slot.roleId, roles)}" rispettando i vincoli (indisponibilità, ferie, ore/turni massimi).`,
+        reason: `Nessun dipendente disponibile per il ruolo "${roleNames(slot.roleIds, roles)}" rispettando i vincoli (indisponibilità, ferie, ore/turni/giorni massimi).`,
       });
     }
   }
@@ -56,8 +56,9 @@ function buildUnresolvedShifts(unresolvedSlots: Slot[], roles: Role[]): Unresolv
 /**
  * Genera la pianificazione settimanale rispettando i vincoli hard (indisponibilità, ferie,
  * ore/turni massimi, copertura minima) e ottimizzando i vincoli soft (preferenza fascia oraria,
- * distribuzione equa delle ore). Se un turno non può essere coperto, viene riportato chiaramente
- * in unresolvedShifts invece di essere omesso silenziosamente.
+ * distribuzione equa delle ore, priorità tra ruolo principale e alternative). Se un turno non
+ * può essere coperto, viene riportato chiaramente in unresolvedShifts invece di essere omesso
+ * silenziosamente.
  */
 export function generateSchedule(input: EngineInput, roles: Role[] = []): ScheduleResult {
   const slots = buildSlots(input);
@@ -71,7 +72,7 @@ export function generateSchedule(input: EngineInput, roles: Role[] = []): Schedu
   for (const slot of slots) {
     const employeeId = state.assignmentBySlotId.get(slot.slotId);
     if (!employeeId) continue;
-    assignments.push({ shiftTemplateId: slot.shiftTemplateId, date: slot.date, employeeId });
+    assignments.push({ shiftTemplateId: slot.shiftTemplateId, date: slot.date, employeeId, roleIds: slot.roleIds });
 
     const employee = activeEmployees.find((e) => e.id === employeeId);
     if (employee && !preferenceMatches(employee, slot)) {

@@ -1,24 +1,36 @@
-import { PropsWithChildren } from 'react';
-import { ScrollView, StyleSheet, View, ViewStyle } from 'react-native';
+import { forwardRef, PropsWithChildren } from 'react';
+import { NativeScrollEvent, NativeSyntheticEvent, ScrollView, StyleSheet, View, ViewStyle } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from './colors';
 
 interface ScreenContainerProps extends PropsWithChildren {
   scroll?: boolean;
   style?: ViewStyle;
+  onScroll?: (event: NativeSyntheticEvent<NativeScrollEvent>) => void;
+  scrollEventThrottle?: number;
 }
 
-export function ScreenContainer({ children, scroll = true, style }: ScreenContainerProps) {
+export const ScreenContainer = forwardRef<ScrollView, ScreenContainerProps>(function ScreenContainer(
+  { children, scroll = true, style, onScroll, scrollEventThrottle },
+  ref
+) {
   return (
     <SafeAreaView style={styles.safeArea} edges={['bottom']}>
       {scroll ? (
-        <ScrollView contentContainerStyle={[styles.content, style]}>{children}</ScrollView>
+        <ScrollView
+          ref={ref}
+          contentContainerStyle={[styles.content, style]}
+          onScroll={onScroll}
+          scrollEventThrottle={scrollEventThrottle}
+        >
+          {children}
+        </ScrollView>
       ) : (
         <View style={[styles.content, styles.flex, style]}>{children}</View>
       )}
     </SafeAreaView>
   );
-}
+});
 
 const styles = StyleSheet.create({
   safeArea: {

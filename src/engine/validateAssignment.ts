@@ -1,5 +1,5 @@
-import { ConstraintViolation, Employee, TimeOff, Unavailability, Weekday } from '@/src/models';
-import { rangesOverlap, shiftDurationHours } from './dateUtils';
+import { ConstraintViolation, Employee, employeeRoleIds, TimeOff, Unavailability, Weekday } from '@/src/models';
+import { rangesOverlap, shiftDurationHours, shiftPreferenceCategory } from './dateUtils';
 import { preferenceMatches } from './constraints/softConstraints';
 
 export interface AssignmentSlotInfo {
@@ -9,7 +9,8 @@ export interface AssignmentSlotInfo {
   weekday: Weekday;
   startTime: string;
   endTime: string;
-  roleId: string;
+  /** Ruoli accettabili per questo requisito, in ordine di priorità. */
+  roleIds: string[];
 }
 
 export interface OtherAssignment {
@@ -37,7 +38,7 @@ export function validateAssignment(input: ValidateAssignmentInput): ConstraintVi
   const violations: ConstraintViolation[] = [];
   const base = { employeeId: employee.id, shiftTemplateId: slot.shiftTemplateId, date: slot.date };
 
-  if (employee.roleId !== slot.roleId) {
+  if (!employeeRoleIds(employee).some((roleId) => slot.roleIds.includes(roleId))) {
     violations.push({
       ...base,
       type: 'role_mismatch',
@@ -76,7 +77,7 @@ export function validateAssignment(input: ValidateAssignmentInput): ConstraintVi
     0
   );
   const thisDuration = shiftDurationHours(slot.startTime, slot.endTime);
-  if (otherHours + thisDuration > employee.maxWeeklyHours + 1e-9) {
+  if (employee.maxWeeklyHours !== undefined && otherHours + thisDuration > employee.maxWeeklyHours + 1e-9) {
     violations.push({
       ...base,
       type: 'max_hours',
@@ -97,6 +98,37 @@ export function validateAssignment(input: ValidateAssignmentInput): ConstraintVi
     });
   }
 
+  if (employee.maxWeeklyDays !== undefined) {
+    const otherDates = new Set(input.otherAssignmentsForEmployee.map((a) => a.date));
+    const isNewDay = !otherDates.has(slot.date);
+    if (isNewDay && otherDates.size + 1 > employee.maxWeeklyDays) {
+      violations.push({
+        ...base,
+        type: 'max_days',
+        severity: 'hard',
+        message: `${employee.name} supererebbe il massimo di ${employee.maxWeeklyDays} giorni lavorativi settimanali.`,
+      });
+    }
+  }
+
+  if (employee.maxWeeklyShiftsByPreference) {
+    const category = shiftPreferenceCategory(slot.startTime);
+    const limit = employee.maxWeeklyShiftsByPreference[category as keyof typeof employee.maxWeeklyShiftsByPreference];
+    if (limit !== undefined) {
+      const otherCategoryCount = input.otherAssignmentsForEmployee.filter(
+        (a) => shiftPreferenceCategory(a.startTime) === category
+      ).length;
+      if (otherCategoryCount + 1 > limit) {
+        violations.push({
+          ...base,
+          type: 'max_preference_shifts',
+          severity: 'hard',
+          message: `${employee.name} supererebbe il massimo di ${limit} turni di ${category} a settimana.`,
+        });
+      }
+    }
+  }
+
   const hasDoubleBooking = input.otherAssignmentsForEmployee.some(
     (a) => a.date === slot.date && rangesOverlap(slot.startTime, slot.endTime, a.startTime, a.endTime)
   );
@@ -115,6 +147,19 @@ export function validateAssignment(input: ValidateAssignmentInput): ConstraintVi
       type: 'preference_mismatch',
       severity: 'soft',
       message: `Questo turno non rispetta la preferenza di fascia oraria di ${employee.name}.`,
+    });
+  }
+
+  const primaryIndex = slot.roleIds.indexOf(employee.roleId);
+  const secondaryIndex = employee.secondaryRoleId ? slot.roleIds.indexOf(employee.secondaryRoleId) : -1;
+  const matchedIndices = [primaryIndex, secondaryIndex].filter((i) => i !== -1);
+  const priorityIndex = matchedIndices.length ? Math.min(...matchedIndices) : -1;
+  if (priorityIndex > 0) {
+    violations.push({
+      ...base,
+      type: 'role_mismatch',
+      severity: 'soft',
+      message: `${employee.name} copre questo turno come alternativa (ruolo principale non disponibile).`,
     });
   }
 

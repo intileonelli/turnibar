@@ -7,7 +7,12 @@ interface MonthlyLeaveCalendarProps {
   year: number;
   /** Mese 1-12. */
   month: number;
+  /** Giorni di ferie del dipendente selezionato. */
   markedDates: Set<string>;
+  /** Numero di ALTRI dipendenti (diversi da quello selezionato) in ferie per ogni data. */
+  otherCounts?: Record<string, number>;
+  /** Limite massimo di dipendenti in ferie nello stesso giorno, se impostato. */
+  maxPerDay?: number;
   onDayPress: (date: string) => void;
 }
 
@@ -21,7 +26,14 @@ function firstWeekdayOfMonth(year: number, month: number): number {
   return jsDay === 0 ? 7 : jsDay;
 }
 
-export function MonthlyLeaveCalendar({ year, month, markedDates, onDayPress }: MonthlyLeaveCalendarProps) {
+export function MonthlyLeaveCalendar({
+  year,
+  month,
+  markedDates,
+  otherCounts = {},
+  maxPerDay,
+  onDayPress,
+}: MonthlyLeaveCalendarProps) {
   const totalDays = daysInMonth(year, month);
   const leadingBlanks = firstWeekdayOfMonth(year, month) - 1;
   const cells: (number | null)[] = [
@@ -51,13 +63,26 @@ export function MonthlyLeaveCalendar({ year, month, markedDates, onDayPress }: M
             if (day === null) return <View key={dayIndex} style={styles.dayCell} />;
             const dateStr = `${year}-${pad(month)}-${pad(day)}`;
             const isMarked = markedDates.has(dateStr);
+            const otherCount = otherCounts[dateStr] ?? 0;
+            const totalCount = otherCount + (isMarked ? 1 : 0);
+            const isFull = maxPerDay !== undefined && totalCount >= maxPerDay;
             return (
               <Pressable
                 key={dayIndex}
                 onPress={() => onDayPress(dateStr)}
-                style={[styles.dayCell, styles.dayCellPressable, isMarked && styles.dayCellMarked]}
+                style={[
+                  styles.dayCell,
+                  styles.dayCellPressable,
+                  isFull && !isMarked && styles.dayCellFull,
+                  isMarked && styles.dayCellMarked,
+                ]}
               >
                 <Text style={[styles.dayText, isMarked && styles.dayTextMarked]}>{day}</Text>
+                {otherCount > 0 && (
+                  <View style={[styles.badge, isFull && styles.badgeFull]}>
+                    <Text style={styles.badgeText}>{otherCount}</Text>
+                  </View>
+                )}
               </Pressable>
             );
           })}
@@ -75,7 +100,7 @@ const styles = StyleSheet.create({
   headerCell: {
     flex: 1,
     textAlign: 'center',
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '700',
     color: colors.textMuted,
   },
@@ -84,9 +109,9 @@ const styles = StyleSheet.create({
   },
   dayCell: {
     flex: 1,
-    aspectRatio: 1,
-    margin: 2,
-    borderRadius: 8,
+    height: 34,
+    margin: 1,
+    borderRadius: 6,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -95,16 +120,40 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
+  dayCellFull: {
+    borderColor: colors.danger,
+    borderWidth: 1.5,
+  },
   dayCellMarked: {
     backgroundColor: colors.primary,
     borderColor: colors.primary,
   },
   dayText: {
-    fontSize: 14,
+    fontSize: 12,
     color: colors.text,
   },
   dayTextMarked: {
     color: '#fff',
     fontWeight: '700',
+  },
+  badge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    minWidth: 14,
+    height: 14,
+    borderRadius: 7,
+    paddingHorizontal: 2,
+    backgroundColor: colors.textMuted,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  badgeFull: {
+    backgroundColor: colors.danger,
+  },
+  badgeText: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#fff',
   },
 });

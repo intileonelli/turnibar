@@ -13,19 +13,53 @@ interface ShiftTemplateRow {
 interface RequirementRow {
   id: string;
   shift_template_id: string;
-  role_id: string;
   count: number;
+}
+
+interface RequirementRoleRow {
+  id: string;
+  requirement_id: string;
+  role_id: string;
+  priority: number;
 }
 
 async function loadRequirements(
   db: Awaited<ReturnType<typeof getDb>>,
   shiftTemplateId: string
 ): Promise<RoleRequirement[]> {
-  const rows = await db.getAllAsync<RequirementRow>(
+  const requirementRows = await db.getAllAsync<RequirementRow>(
     'SELECT * FROM shift_template_requirements WHERE shift_template_id = ?;',
     [shiftTemplateId]
   );
-  return rows.map((r) => ({ roleId: r.role_id, count: r.count }));
+  const requirements: RoleRequirement[] = [];
+  for (const req of requirementRows) {
+    const roleRows = await db.getAllAsync<RequirementRoleRow>(
+      'SELECT * FROM shift_template_requirement_roles WHERE requirement_id = ? ORDER BY priority ASC;',
+      [req.id]
+    );
+    requirements.push({ roleIds: roleRows.map((r) => r.role_id), count: req.count });
+  }
+  return requirements;
+}
+
+async function insertRequirements(
+  db: Awaited<ReturnType<typeof getDb>>,
+  shiftTemplateId: string,
+  requirements: RoleRequirement[]
+): Promise<void> {
+  for (const req of requirements) {
+    const requirementId = generateId();
+    await db.runAsync(
+      'INSERT INTO shift_template_requirements (id, shift_template_id, count) VALUES (?, ?, ?);',
+      [requirementId, shiftTemplateId, req.count]
+    );
+    for (let priority = 0; priority < req.roleIds.length; priority++) {
+      await db.runAsync(
+        'INSERT INTO shift_template_requirement_roles (id, requirement_id, role_id, priority) VALUES (?, ?, ?, ?);',
+        [generateId(), requirementId, req.roleIds[priority], priority]
+      );
+    }
+  }
 }
 
 export async function listShiftTemplates(): Promise<ShiftTemplate[]> {
@@ -61,12 +95,7 @@ export async function createShiftTemplate(input: Omit<ShiftTemplate, 'id'>): Pro
       'INSERT INTO shift_templates (id, weekday, name, start_time, end_time) VALUES (?, ?, ?, ?, ?);',
       [id, input.weekday, input.name, input.startTime, input.endTime]
     );
-    for (const req of input.requirements) {
-      await db.runAsync(
-        'INSERT INTO shift_template_requirements (id, shift_template_id, role_id, count) VALUES (?, ?, ?, ?);',
-        [generateId(), id, req.roleId, req.count]
-      );
-    }
+    await insertRequirements(db, id, input.requirements);
   });
   return { id, ...input };
 }
@@ -81,16 +110,31 @@ export async function updateShiftTemplate(template: ShiftTemplate): Promise<void
     await db.runAsync('DELETE FROM shift_template_requirements WHERE shift_template_id = ?;', [
       template.id,
     ]);
-    for (const req of template.requirements) {
-      await db.runAsync(
-        'INSERT INTO shift_template_requirements (id, shift_template_id, role_id, count) VALUES (?, ?, ?, ?);',
-        [generateId(), template.id, req.roleId, req.count]
-      );
-    }
+    await insertRequirements(db, template.id, template.requirements);
   });
 }
 
 export async function deleteShiftTemplate(id: string): Promise<void> {
   const db = await getDb();
-  await db.runAsync('DELETE FROM shift_templates WHERE id = ?;', [id]);
+  await db.withTransactionAsync(async () => {
+    // Le assegnazioni generate per questo turno tipo non hanno un ON DELETE CASCADE
+    // (sono un dato storico legato a una pianificazione salvata), quindi vanno rimosse
+    // esplicitamente prima di eliminare il turno tipo, altrimenti il vincolo di integrità
+    // referenziale blocca la cancellazione.
+    await db.runAsync('DELETE FROM shift_assignments WHERE shift_template_id = ?;', [id]);
+    await db.runAsync('DELETE FROM shift_templates WHERE id = ?;', [id]);
+  });
+}
+
+/** Elimina in un colpo solo tutti i turni tipo di un giorno della settimana. */
+export async function deleteShiftTemplatesForWeekday(weekday: Weekday): Promise<void> {
+  const db = await getDb();
+  await db.withTransactionAsync(async () => {
+    await db.runAsync(
+      `DELETE FROM shift_assignments
+        WHERE shift_template_id IN (SELECT id FROM shift_templates WHERE weekday = ?);`,
+      [weekday]
+    );
+    await db.runAsync('DELETE FROM shift_templates WHERE weekday = ?;', [weekday]);
+  });
 }

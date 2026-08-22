@@ -21,7 +21,7 @@ const SLOT: AssignmentSlotInfo = {
   weekday: 1,
   startTime: '09:00',
   endTime: '13:00',
-  roleId: ROLE_COMMESSO,
+  roleIds: [ROLE_COMMESSO],
 };
 
 describe('validateAssignment', () => {
@@ -147,5 +147,139 @@ describe('validateAssignment', () => {
     const preferenceViolation = violations.find((v) => v.type === 'preference_mismatch');
     expect(preferenceViolation).toBeDefined();
     expect(preferenceViolation?.severity).toBe('soft');
+  });
+
+  it('non segnala nulla sul ruolo quando il dipendente ha il ruolo principale', () => {
+    const anna = makeEmployee({ id: 'anna', name: 'Anna', roleId: ROLE_COMMESSO });
+    const slotWithFallback = { ...SLOT, roleIds: [ROLE_COMMESSO, ROLE_CASSIERE] };
+
+    const violations = validateAssignment({
+      employee: anna,
+      slot: slotWithFallback,
+      otherAssignmentsForEmployee: [],
+      unavailabilities: [],
+      timeOff: [],
+    });
+
+    expect(violations.some((v) => v.type === 'role_mismatch')).toBe(false);
+  });
+
+  it('segnala come violazione soft l\'uso di un ruolo alternativo (non principale)', () => {
+    const carla = makeEmployee({ id: 'carla', name: 'Carla', roleId: ROLE_CASSIERE });
+    const slotWithFallback = { ...SLOT, roleIds: [ROLE_COMMESSO, ROLE_CASSIERE] };
+
+    const violations = validateAssignment({
+      employee: carla,
+      slot: slotWithFallback,
+      otherAssignmentsForEmployee: [],
+      unavailabilities: [],
+      timeOff: [],
+    });
+
+    const roleViolation = violations.find((v) => v.type === 'role_mismatch');
+    expect(roleViolation).toBeDefined();
+    expect(roleViolation?.severity).toBe('soft');
+  });
+
+  it('non segnala ore massime quando il dipendente non ha un limite impostato', () => {
+    const anna = makeEmployee({ id: 'anna', name: 'Anna', roleId: ROLE_COMMESSO, maxWeeklyHours: undefined });
+
+    const violations = validateAssignment({
+      employee: anna,
+      slot: SLOT,
+      otherAssignmentsForEmployee: [
+        { date: '2026-08-04', startTime: '09:00', endTime: '18:00' },
+        { date: '2026-08-05', startTime: '09:00', endTime: '18:00' },
+      ],
+      unavailabilities: [],
+      timeOff: [],
+    });
+
+    expect(violations.some((v) => v.type === 'max_hours')).toBe(false);
+  });
+
+  it('segnala il superamento del numero massimo di giorni lavorativi', () => {
+    const anna = makeEmployee({ id: 'anna', name: 'Anna', roleId: ROLE_COMMESSO, maxWeeklyDays: 1 });
+
+    const violations = validateAssignment({
+      employee: anna,
+      slot: SLOT, // 2026-08-03
+      otherAssignmentsForEmployee: [{ date: '2026-08-04', startTime: '09:00', endTime: '13:00' }],
+      unavailabilities: [],
+      timeOff: [],
+    });
+
+    expect(violations.some((v) => v.type === 'max_days')).toBe(true);
+  });
+
+  it('non segnala giorni massimi se il turno è nello stesso giorno già lavorato', () => {
+    const anna = makeEmployee({ id: 'anna', name: 'Anna', roleId: ROLE_COMMESSO, maxWeeklyDays: 1 });
+
+    const violations = validateAssignment({
+      employee: anna,
+      slot: SLOT, // 2026-08-03
+      otherAssignmentsForEmployee: [{ date: '2026-08-03', startTime: '14:00', endTime: '18:00' }],
+      unavailabilities: [],
+      timeOff: [],
+    });
+
+    expect(violations.some((v) => v.type === 'max_days')).toBe(false);
+  });
+
+  it('non segnala il ruolo quando il dipendente copre il turno con il ruolo secondario', () => {
+    const bruno = makeEmployee({
+      id: 'bruno',
+      name: 'Bruno',
+      roleId: ROLE_CASSIERE,
+      secondaryRoleId: ROLE_COMMESSO,
+    });
+
+    const violations = validateAssignment({
+      employee: bruno,
+      slot: SLOT, // richiede solo ROLE_COMMESSO
+      otherAssignmentsForEmployee: [],
+      unavailabilities: [],
+      timeOff: [],
+    });
+
+    expect(violations.some((v) => v.type === 'role_mismatch' && v.severity === 'hard')).toBe(false);
+  });
+
+  it('segnala il superamento del limite di turni per fascia oraria', () => {
+    const anna = makeEmployee({
+      id: 'anna',
+      name: 'Anna',
+      roleId: ROLE_COMMESSO,
+      maxWeeklyShiftsByPreference: { mattina: 1 },
+    });
+
+    const violations = validateAssignment({
+      employee: anna,
+      slot: SLOT, // mattina (09:00)
+      otherAssignmentsForEmployee: [{ date: '2026-08-04', startTime: '09:00', endTime: '13:00' }],
+      unavailabilities: [],
+      timeOff: [],
+    });
+
+    expect(violations.some((v) => v.type === 'max_preference_shifts')).toBe(true);
+  });
+
+  it('non segnala il limite di fascia se il conteggio riguarda una fascia diversa', () => {
+    const anna = makeEmployee({
+      id: 'anna',
+      name: 'Anna',
+      roleId: ROLE_COMMESSO,
+      maxWeeklyShiftsByPreference: { sera: 1 },
+    });
+
+    const violations = validateAssignment({
+      employee: anna,
+      slot: SLOT, // mattina (09:00), il limite impostato è per la sera
+      otherAssignmentsForEmployee: [{ date: '2026-08-04', startTime: '09:00', endTime: '13:00' }],
+      unavailabilities: [],
+      timeOff: [],
+    });
+
+    expect(violations.some((v) => v.type === 'max_preference_shifts')).toBe(false);
   });
 });

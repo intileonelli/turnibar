@@ -14,6 +14,8 @@ export interface GeneratedAssignment {
   shiftTemplateId: string;
   date: string;
   employeeId: string;
+  /** Ruoli del requisito specifico riempito da questa assegnazione, in ordine di priorità. */
+  roleIds: string[];
 }
 
 export interface UnresolvedShift {
@@ -21,7 +23,8 @@ export interface UnresolvedShift {
   date: string;
   weekday: Weekday;
   shiftName: string;
-  roleId: string;
+  /** Ruoli accettabili per questo requisito, in ordine di priorità. */
+  roleIds: string[];
   missingCount: number;
   reason: string;
 }
@@ -34,7 +37,7 @@ export interface ScheduleResult {
   softViolationsCount: number;
 }
 
-/** Una singola "unità" da coprire: un turno tipo in una data, per un ruolo, un posto alla volta. */
+/** Una singola "unità" da coprire: un turno tipo in una data, un posto alla volta. */
 export interface Slot {
   slotId: string;
   shiftTemplateId: string;
@@ -43,5 +46,6 @@ export interface Slot {
   weekday: Weekday;
   startTime: string;
   endTime: string;
-  roleId: string;
+  /** Ruoli accettabili per questo slot, in ordine di priorità (il primo è quello preferito). */
+  roleIds: string[];
 }

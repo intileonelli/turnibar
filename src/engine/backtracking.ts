@@ -29,7 +29,7 @@ function sortSlotsByMostConstrainedFirst(
     if (a.eligibleCount !== b.eligibleCount) return a.eligibleCount - b.eligibleCount;
     if (a.slot.date !== b.slot.date) return a.slot.date.localeCompare(b.slot.date);
     if (a.slot.startTime !== b.slot.startTime) return a.slot.startTime.localeCompare(b.slot.startTime);
-    return a.slot.roleId.localeCompare(b.slot.roleId);
+    return a.slot.roleIds.join(',').localeCompare(b.slot.roleIds.join(','));
   });
 
   return withCounts.map((w) => w.slot);

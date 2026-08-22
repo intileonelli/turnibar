@@ -44,3 +44,17 @@ export function formatDateLong(dateStr: string): string {
 export function daysInMonth(year: number, month: number): number {
   return new Date(year, month, 0).getDate();
 }
+
+/**
+ * Normalizza un orario inserito dall'utente (es. "6.30", "6:30", "06.30") nel formato
+ * canonico "HH:mm", così viene sempre salvato in modo coerente. Restituisce null se il testo
+ * non è un orario valido (ore 0-23, minuti 0-59).
+ */
+export function normalizeTime(input: string): string | null {
+  const match = input.trim().match(/^(\d{1,2})[:.](\d{1,2})$/);
+  if (!match) return null;
+  const h = Number(match[1]);
+  const m = Number(match[2]);
+  if (h < 0 || h > 23 || m < 0 || m > 59) return null;
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+}

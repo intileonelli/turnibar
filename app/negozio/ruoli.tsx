@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { ScreenContainer } from '@/src/components/shared/ScreenContainer';
 import { TextField } from '@/src/components/shared/TextField';
 import { Button } from '@/src/components/shared/Button';
@@ -7,20 +7,40 @@ import { Card } from '@/src/components/shared/Card';
 import { colors, ROLE_COLOR_PALETTE } from '@/src/components/shared/colors';
 import { useRoles } from '@/src/hooks/useRoles';
 import { roleRepository } from '@/src/db/repositories';
+import { confirmAction } from '@/src/utils/alert';
 import { strings } from '@/src/i18n/strings';
 
 export default function RolesScreen() {
   const { roles, reload } = useRoles();
+  const [editingRoleId, setEditingRoleId] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [color, setColor] = useState(ROLE_COLOR_PALETTE[0]);
   const [saving, setSaving] = useState(false);
 
-  const handleAdd = async () => {
+  const resetForm = () => {
+    setEditingRoleId(null);
+    setName('');
+    setColor(ROLE_COLOR_PALETTE[0]);
+  };
+
+  const startEdit = (roleId: string) => {
+    const role = roles.find((r) => r.id === roleId);
+    if (!role) return;
+    setEditingRoleId(roleId);
+    setName(role.name);
+    setColor(role.color);
+  };
+
+  const handleSubmit = async () => {
     if (!name.trim()) return;
     setSaving(true);
     try {
-      await roleRepository.createRole({ name: name.trim(), color });
-      setName('');
+      if (editingRoleId) {
+        await roleRepository.updateRole({ id: editingRoleId, name: name.trim(), color });
+      } else {
+        await roleRepository.createRole({ name: name.trim(), color });
+      }
+      resetForm();
       await reload();
     } finally {
       setSaving(false);
@@ -28,17 +48,17 @@ export default function RolesScreen() {
   };
 
   const handleDelete = (id: string) => {
-    Alert.alert('Eliminare il ruolo?', 'I dipendenti con questo ruolo resteranno senza ruolo valido.', [
-      { text: strings.common.cancel, style: 'cancel' },
-      {
-        text: strings.common.delete,
-        style: 'destructive',
-        onPress: async () => {
-          await roleRepository.deleteRole(id);
-          await reload();
-        },
+    confirmAction(
+      'Eliminare il ruolo?',
+      'I dipendenti con questo ruolo resteranno senza ruolo valido.',
+      async () => {
+        if (editingRoleId === id) resetForm();
+        await roleRepository.deleteRole(id);
+        await reload();
       },
-    ]);
+      strings.common.delete,
+      true
+    );
   };
 
   return (
@@ -52,12 +72,19 @@ export default function RolesScreen() {
               <View style={[styles.colorDot, { backgroundColor: role.color }]} />
               <Text style={styles.roleName}>{role.name}</Text>
             </View>
-            <Button label={strings.common.delete} variant="danger" onPress={() => handleDelete(role.id)} />
+            <View style={styles.roleActions}>
+              <View style={styles.roleActionButton}>
+                <Button label="Modifica" variant="secondary" onPress={() => startEdit(role.id)} />
+              </View>
+              <View style={styles.roleActionButton}>
+                <Button label={strings.common.delete} variant="danger" onPress={() => handleDelete(role.id)} />
+              </View>
+            </View>
           </View>
         </Card>
       ))}
 
-      <Text style={styles.sectionTitle}>{strings.roles.newRole}</Text>
+      <Text style={styles.sectionTitle}>{editingRoleId ? 'Modifica ruolo' : strings.roles.newRole}</Text>
       <TextField label={strings.roles.name} value={name} onChangeText={setName} placeholder="Es. Commesso" />
 
       <Text style={styles.label}>{strings.roles.color}</Text>
@@ -75,7 +102,20 @@ export default function RolesScreen() {
         ))}
       </View>
 
-      <Button label={strings.common.add} onPress={handleAdd} loading={saving} />
+      <View style={styles.formActionsRow}>
+        {editingRoleId && (
+          <View style={styles.roleActionButton}>
+            <Button label={strings.common.cancel} variant="secondary" onPress={resetForm} />
+          </View>
+        )}
+        <View style={styles.formSubmitButton}>
+          <Button
+            label={editingRoleId ? strings.common.save : strings.common.add}
+            onPress={handleSubmit}
+            loading={saving}
+          />
+        </View>
+      </View>
     </ScreenContainer>
   );
 }
@@ -94,6 +134,14 @@ const styles = StyleSheet.create({
   roleLabelRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    flexShrink: 1,
+  },
+  roleActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  roleActionButton: {
+    minWidth: 0,
   },
   colorDot: {
     width: 14,
@@ -134,5 +182,12 @@ const styles = StyleSheet.create({
   colorSwatchSelected: {
     borderWidth: 3,
     borderColor: colors.text,
+  },
+  formActionsRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  formSubmitButton: {
+    flex: 2,
   },
 });

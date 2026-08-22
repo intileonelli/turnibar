@@ -15,6 +15,7 @@ interface AssignmentRow {
   shift_template_id: string;
   date: string;
   employee_id: string;
+  role_ids: string | null;
   manually_edited: number;
 }
 
@@ -34,6 +35,7 @@ function mapAssignmentRow(row: AssignmentRow): ShiftAssignment {
     shiftTemplateId: row.shift_template_id,
     date: row.date,
     employeeId: row.employee_id,
+    roleIds: row.role_ids ? row.role_ids.split(',') : undefined,
     manuallyEdited: row.manually_edited === 1,
   };
 }
@@ -60,6 +62,7 @@ export interface NewAssignment {
   shiftTemplateId: string;
   date: string;
   employeeId: string;
+  roleIds: string[];
 }
 
 /**
@@ -85,9 +88,9 @@ export async function saveGeneratedSchedule(
     for (const a of assignments) {
       await db.runAsync(
         `INSERT INTO shift_assignments
-          (id, schedule_id, shift_template_id, date, employee_id, manually_edited)
-         VALUES (?, ?, ?, ?, ?, 0);`,
-        [generateId(), id, a.shiftTemplateId, a.date, a.employeeId]
+          (id, schedule_id, shift_template_id, date, employee_id, role_ids, manually_edited)
+         VALUES (?, ?, ?, ?, ?, ?, 0);`,
+        [generateId(), id, a.shiftTemplateId, a.date, a.employeeId, a.roleIds.join(',')]
       );
     }
   });
@@ -110,14 +113,15 @@ export async function addManualAssignment(input: {
   shiftTemplateId: string;
   date: string;
   employeeId: string;
+  roleIds: string[];
 }): Promise<ShiftAssignment> {
   const db = await getDb();
   const id = generateId();
   await db.runAsync(
     `INSERT INTO shift_assignments
-      (id, schedule_id, shift_template_id, date, employee_id, manually_edited)
-     VALUES (?, ?, ?, ?, ?, 1);`,
-    [id, input.scheduleId, input.shiftTemplateId, input.date, input.employeeId]
+      (id, schedule_id, shift_template_id, date, employee_id, role_ids, manually_edited)
+     VALUES (?, ?, ?, ?, ?, ?, 1);`,
+    [id, input.scheduleId, input.shiftTemplateId, input.date, input.employeeId, input.roleIds.join(',')]
   );
   return { id, manuallyEdited: true, ...input };
 }

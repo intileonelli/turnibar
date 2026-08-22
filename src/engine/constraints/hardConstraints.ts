@@ -1,5 +1,5 @@
-import { Employee } from '@/src/models';
-import { rangesOverlap, shiftDurationHours } from '../dateUtils';
+import { Employee, employeeRoleIds } from '@/src/models';
+import { rangesOverlap, shiftDurationHours, shiftPreferenceCategory } from '../dateUtils';
 import { SolverContext, SolverState } from '../state';
 import { Slot } from '../types';
 
@@ -10,6 +10,8 @@ export type HardConstraintFailure =
   | 'time_off'
   | 'max_hours'
   | 'max_shifts'
+  | 'max_days'
+  | 'max_preference_shifts'
   | 'double_booking';
 
 /** Verifica un dipendente candidato contro tutti i vincoli hard per uno slot, nello stato corrente. */
@@ -20,7 +22,7 @@ export function findHardConstraintFailure(
   context: SolverContext
 ): HardConstraintFailure | null {
   if (!employee.active) return 'inactive';
-  if (employee.roleId !== slot.roleId) return 'role_mismatch';
+  if (!employeeRoleIds(employee).some((roleId) => slot.roleIds.includes(roleId))) return 'role_mismatch';
 
   const unavailabilities = context.unavailabilitiesByEmployee.get(employee.id) ?? [];
   const hasUnavailabilityConflict = unavailabilities.some(
@@ -32,13 +34,33 @@ export function findHardConstraintFailure(
   if (timeOffDates?.has(slot.date)) return 'time_off';
 
   const duration = shiftDurationHours(slot.startTime, slot.endTime);
-  if (state.getHours(employee.id) + duration > employee.maxWeeklyHours + 1e-9) return 'max_hours';
+  if (
+    employee.maxWeeklyHours !== undefined &&
+    state.getHours(employee.id) + duration > employee.maxWeeklyHours + 1e-9
+  ) {
+    return 'max_hours';
+  }
 
   if (
     employee.maxWeeklyShifts !== undefined &&
     state.getShiftCount(employee.id) + 1 > employee.maxWeeklyShifts
   ) {
     return 'max_shifts';
+  }
+
+  if (employee.maxWeeklyDays !== undefined) {
+    const alreadyWorksThisDate = state.getRangesOn(employee.id, slot.date).length > 0;
+    if (!alreadyWorksThisDate && state.getDaysWorked(employee.id) + 1 > employee.maxWeeklyDays) {
+      return 'max_days';
+    }
+  }
+
+  if (employee.maxWeeklyShiftsByPreference) {
+    const category = shiftPreferenceCategory(slot.startTime);
+    const limit = employee.maxWeeklyShiftsByPreference[category as keyof typeof employee.maxWeeklyShiftsByPreference];
+    if (limit !== undefined && state.getCategoryShiftCount(employee.id, category) + 1 > limit) {
+      return 'max_preference_shifts';
+    }
   }
 
   const rangesOnDate = state.getRangesOn(employee.id, slot.date);

@@ -3,6 +3,8 @@ export type ViolationType =
   | 'time_off'
   | 'max_hours'
   | 'max_shifts'
+  | 'max_days'
+  | 'max_preference_shifts'
   | 'coverage_missing'
   | 'double_booking'
   | 'role_mismatch'
