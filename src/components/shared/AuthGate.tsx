@@ -22,7 +22,7 @@ export function AuthGate({ children }: PropsWithChildren) {
   }
 
   if (!profile) {
-    return <CompleteSetupScreen userId={session.user.id} onDone={reloadProfile} />;
+    return <CompleteSetupScreen onDone={reloadProfile} />;
   }
 
   return <>{children}</>;

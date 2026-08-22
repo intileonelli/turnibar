@@ -7,12 +7,11 @@ import { supabase } from '@/src/lib/supabase';
 import { showAlert } from '@/src/utils/alert';
 
 interface CompleteSetupScreenProps {
-  userId: string;
   onDone: () => void;
 }
 
 /** Mostrata al primo accesso: chi si registra crea qui la propria azienda ed è il titolare. */
-export function CompleteSetupScreen({ userId, onDone }: CompleteSetupScreenProps) {
+export function CompleteSetupScreen({ onDone }: CompleteSetupScreenProps) {
   const [companyName, setCompanyName] = useState('');
   const [fullName, setFullName] = useState('');
   const [saving, setSaving] = useState(false);
@@ -25,26 +24,13 @@ export function CompleteSetupScreen({ userId, onDone }: CompleteSetupScreenProps
 
     setSaving(true);
     try {
-      const { data: company, error: companyError } = await supabase
-        .from('companies')
-        .insert({ name: companyName.trim() })
-        .select('id')
-        .single();
-
-      if (companyError || !company) {
-        showAlert('Errore', companyError?.message ?? 'Impossibile creare l\'azienda.');
-        return;
-      }
-
-      const { error: profileError } = await supabase.from('profiles').insert({
-        id: userId,
-        company_id: company.id,
-        role: 'owner',
-        full_name: fullName.trim(),
+      const { error } = await supabase.rpc('create_company_and_owner_profile', {
+        company_name: companyName.trim(),
+        owner_full_name: fullName.trim(),
       });
 
-      if (profileError) {
-        showAlert('Errore', profileError.message);
+      if (error) {
+        showAlert('Errore', error.message);
         return;
       }
 
