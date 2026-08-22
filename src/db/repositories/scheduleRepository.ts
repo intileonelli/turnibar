@@ -1,6 +1,5 @@
-import { getDb } from '@/src/db/client';
+import { supabase } from '@/src/lib/supabase';
 import { ScheduleStatus, ShiftAssignment, WeeklySchedule } from '@/src/models';
-import { generateId } from '@/src/utils/id';
 
 interface ScheduleRow {
   id: string;
@@ -15,8 +14,8 @@ interface AssignmentRow {
   shift_template_id: string;
   date: string;
   employee_id: string;
-  role_ids: string | null;
-  manually_edited: number;
+  role_ids: string[] | null;
+  manually_edited: boolean;
 }
 
 function mapScheduleRow(row: ScheduleRow): WeeklySchedule {
@@ -35,27 +34,29 @@ function mapAssignmentRow(row: AssignmentRow): ShiftAssignment {
     shiftTemplateId: row.shift_template_id,
     date: row.date,
     employeeId: row.employee_id,
-    roleIds: row.role_ids ? row.role_ids.split(',') : undefined,
-    manuallyEdited: row.manually_edited === 1,
+    roleIds: row.role_ids ?? undefined,
+    manuallyEdited: row.manually_edited,
   };
 }
 
 export async function getScheduleForWeek(weekStartDate: string): Promise<WeeklySchedule | null> {
-  const db = await getDb();
-  const row = await db.getFirstAsync<ScheduleRow>(
-    'SELECT * FROM schedules WHERE week_start_date = ?;',
-    [weekStartDate]
-  );
-  return row ? mapScheduleRow(row) : null;
+  const { data, error } = await supabase
+    .from('schedules')
+    .select('*')
+    .eq('week_start_date', weekStartDate)
+    .maybeSingle();
+  if (error) throw error;
+  return data ? mapScheduleRow(data) : null;
 }
 
 export async function listAssignmentsForSchedule(scheduleId: string): Promise<ShiftAssignment[]> {
-  const db = await getDb();
-  const rows = await db.getAllAsync<AssignmentRow>(
-    'SELECT * FROM shift_assignments WHERE schedule_id = ? ORDER BY date;',
-    [scheduleId]
-  );
-  return rows.map(mapAssignmentRow);
+  const { data, error } = await supabase
+    .from('shift_assignments')
+    .select('*')
+    .eq('schedule_id', scheduleId)
+    .order('date');
+  if (error) throw error;
+  return (data ?? []).map(mapAssignmentRow);
 }
 
 export interface NewAssignment {
@@ -66,45 +67,41 @@ export interface NewAssignment {
 }
 
 /**
- * Sostituisce (se esiste) la pianificazione della settimana con una nuova generata automaticamente.
- * Operazione transazionale: cancella lo schedule precedente (le assegnazioni collegate vengono
- * rimosse in cascata) e inserisce quello nuovo.
+ * Sostituisce (se esiste) la pianificazione della settimana con una nuova generata
+ * automaticamente. Passa tutto a una funzione del database che fa cancellazione e
+ * inserimento in un'unica operazione atomica (tutto o niente).
  */
 export async function saveGeneratedSchedule(
   weekStartDate: string,
   status: ScheduleStatus,
   assignments: NewAssignment[]
 ): Promise<WeeklySchedule> {
-  const db = await getDb();
-  const id = generateId();
-  const generatedAt = new Date().toISOString();
-
-  await db.withTransactionAsync(async () => {
-    await db.runAsync('DELETE FROM schedules WHERE week_start_date = ?;', [weekStartDate]);
-    await db.runAsync(
-      'INSERT INTO schedules (id, week_start_date, generated_at, status) VALUES (?, ?, ?, ?);',
-      [id, weekStartDate, generatedAt, status]
-    );
-    for (const a of assignments) {
-      await db.runAsync(
-        `INSERT INTO shift_assignments
-          (id, schedule_id, shift_template_id, date, employee_id, role_ids, manually_edited)
-         VALUES (?, ?, ?, ?, ?, ?, 0);`,
-        [generateId(), id, a.shiftTemplateId, a.date, a.employeeId, a.roleIds.join(',')]
-      );
-    }
+  const { data: scheduleId, error } = await supabase.rpc('save_generated_schedule', {
+    p_week_start_date: weekStartDate,
+    p_status: status,
+    p_assignments: assignments.map((a) => ({
+      shiftTemplateId: a.shiftTemplateId,
+      date: a.date,
+      employeeId: a.employeeId,
+      roleIds: a.roleIds,
+    })),
   });
-
-  return { id, weekStartDate, generatedAt, status };
+  if (error) throw error;
+  return {
+    id: scheduleId as string,
+    weekStartDate,
+    generatedAt: new Date().toISOString(),
+    status,
+  };
 }
 
 /** Riassegna manualmente un turno a un altro dipendente, marcando l'assegnazione come modificata a mano. */
 export async function reassignShift(assignmentId: string, employeeId: string): Promise<void> {
-  const db = await getDb();
-  await db.runAsync(
-    'UPDATE shift_assignments SET employee_id = ?, manually_edited = 1 WHERE id = ?;',
-    [employeeId, assignmentId]
-  );
+  const { error } = await supabase
+    .from('shift_assignments')
+    .update({ employee_id: employeeId, manually_edited: true })
+    .eq('id', assignmentId);
+  if (error) throw error;
 }
 
 /** Aggiunge manualmente un'assegnazione, es. per coprire un turno che il motore non è riuscito a coprire. */
@@ -115,18 +112,23 @@ export async function addManualAssignment(input: {
   employeeId: string;
   roleIds: string[];
 }): Promise<ShiftAssignment> {
-  const db = await getDb();
-  const id = generateId();
-  await db.runAsync(
-    `INSERT INTO shift_assignments
-      (id, schedule_id, shift_template_id, date, employee_id, role_ids, manually_edited)
-     VALUES (?, ?, ?, ?, ?, ?, 1);`,
-    [id, input.scheduleId, input.shiftTemplateId, input.date, input.employeeId, input.roleIds.join(',')]
-  );
-  return { id, manuallyEdited: true, ...input };
+  const { data, error } = await supabase
+    .from('shift_assignments')
+    .insert({
+      schedule_id: input.scheduleId,
+      shift_template_id: input.shiftTemplateId,
+      date: input.date,
+      employee_id: input.employeeId,
+      role_ids: input.roleIds,
+      manually_edited: true,
+    })
+    .select()
+    .single();
+  if (error) throw error;
+  return mapAssignmentRow(data);
 }
 
 export async function deleteAssignment(assignmentId: string): Promise<void> {
-  const db = await getDb();
-  await db.runAsync('DELETE FROM shift_assignments WHERE id = ?;', [assignmentId]);
+  const { error } = await supabase.from('shift_assignments').delete().eq('id', assignmentId);
+  if (error) throw error;
 }

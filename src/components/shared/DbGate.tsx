@@ -1,9 +1,13 @@
 import { PropsWithChildren, useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
-import { getDb } from '@/src/db/client';
+import { getDb } from '@/src/db/local/client';
 import { colors } from './colors';
 
-/** Inizializza il database (schema + seed) prima di mostrare l'app, mostrando errori chiari se fallisce. */
+/**
+ * Inizializza il database locale prima di mostrare l'app. I dati veri ora vivono su Supabase;
+ * il database locale resta solo per poter importare, una tantum, i dati inseriti prima del
+ * passaggio al cloud (vedi la schermata di migrazione).
+ */
 export function DbGate({ children }: PropsWithChildren) {
   const [ready, setReady] = useState(false);
   const [error, setError] = useState<string | null>(null);

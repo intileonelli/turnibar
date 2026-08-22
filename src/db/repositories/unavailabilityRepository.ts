@@ -1,6 +1,5 @@
-import { getDb } from '@/src/db/client';
+import { supabase } from '@/src/lib/supabase';
 import { Unavailability, Weekday } from '@/src/models';
-import { generateId } from '@/src/utils/id';
 
 interface UnavailabilityRow {
   id: string;
@@ -22,37 +21,42 @@ function mapRow(row: UnavailabilityRow): Unavailability {
   };
 }
 
-export async function listUnavailabilitiesForEmployee(
-  employeeId: string
-): Promise<Unavailability[]> {
-  const db = await getDb();
-  const rows = await db.getAllAsync<UnavailabilityRow>(
-    'SELECT * FROM unavailabilities WHERE employee_id = ? ORDER BY weekday, start_time;',
-    [employeeId]
-  );
-  return rows.map(mapRow);
+export async function listUnavailabilitiesForEmployee(employeeId: string): Promise<Unavailability[]> {
+  const { data, error } = await supabase
+    .from('unavailabilities')
+    .select('*')
+    .eq('employee_id', employeeId)
+    .order('weekday')
+    .order('start_time');
+  if (error) throw error;
+  return (data ?? []).map(mapRow);
 }
 
 export async function listAllUnavailabilities(): Promise<Unavailability[]> {
-  const db = await getDb();
-  const rows = await db.getAllAsync<UnavailabilityRow>('SELECT * FROM unavailabilities;');
-  return rows.map(mapRow);
+  const { data, error } = await supabase.from('unavailabilities').select('*');
+  if (error) throw error;
+  return (data ?? []).map(mapRow);
 }
 
 export async function createUnavailability(
   input: Omit<Unavailability, 'id'>
 ): Promise<Unavailability> {
-  const db = await getDb();
-  const id = generateId();
-  await db.runAsync(
-    `INSERT INTO unavailabilities (id, employee_id, weekday, start_time, end_time, note)
-     VALUES (?, ?, ?, ?, ?, ?);`,
-    [id, input.employeeId, input.weekday, input.startTime, input.endTime, input.note ?? null]
-  );
-  return { id, ...input };
+  const { data, error } = await supabase
+    .from('unavailabilities')
+    .insert({
+      employee_id: input.employeeId,
+      weekday: input.weekday,
+      start_time: input.startTime,
+      end_time: input.endTime,
+      note: input.note ?? null,
+    })
+    .select()
+    .single();
+  if (error) throw error;
+  return mapRow(data);
 }
 
 export async function deleteUnavailability(id: string): Promise<void> {
-  const db = await getDb();
-  await db.runAsync('DELETE FROM unavailabilities WHERE id = ?;', [id]);
+  const { error } = await supabase.from('unavailabilities').delete().eq('id', id);
+  if (error) throw error;
 }

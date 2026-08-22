@@ -1,6 +1,5 @@
-import { getDb } from '@/src/db/client';
+import { supabase } from '@/src/lib/supabase';
 import { Employee, ShiftPreference, Weekday } from '@/src/models';
-import { generateId } from '@/src/utils/id';
 
 interface EmployeeRow {
   id: string;
@@ -11,11 +10,11 @@ interface EmployeeRow {
   max_weekly_hours: number | null;
   max_weekly_shifts: number | null;
   max_weekly_days: number | null;
-  preferred_weekdays: string | null;
+  preferred_weekdays: number[] | null;
   preference: ShiftPreference;
-  pinned_shift_template_ids: string | null;
-  max_weekly_shifts_by_preference: string | null;
-  active: number;
+  pinned_shift_template_ids: string[] | null;
+  max_weekly_shifts_by_preference: Employee['maxWeeklyShiftsByPreference'] | null;
+  active: boolean;
 }
 
 function mapRow(row: EmployeeRow): Employee {
@@ -28,95 +27,63 @@ function mapRow(row: EmployeeRow): Employee {
     maxWeeklyHours: row.max_weekly_hours ?? undefined,
     maxWeeklyShifts: row.max_weekly_shifts ?? undefined,
     maxWeeklyDays: row.max_weekly_days ?? undefined,
-    preferredWeekdays: row.preferred_weekdays
-      ? (row.preferred_weekdays.split(',').map(Number) as Weekday[])
-      : undefined,
+    preferredWeekdays: row.preferred_weekdays?.length ? (row.preferred_weekdays as Weekday[]) : undefined,
     preference: row.preference,
-    pinnedShiftTemplateIds: row.pinned_shift_template_ids
-      ? row.pinned_shift_template_ids.split(',')
+    pinnedShiftTemplateIds: row.pinned_shift_template_ids?.length
+      ? row.pinned_shift_template_ids
       : undefined,
-    maxWeeklyShiftsByPreference: row.max_weekly_shifts_by_preference
-      ? JSON.parse(row.max_weekly_shifts_by_preference)
-      : undefined,
-    active: row.active === 1,
+    maxWeeklyShiftsByPreference: row.max_weekly_shifts_by_preference ?? undefined,
+    active: row.active,
+  };
+}
+
+function toRow(input: Omit<Employee, 'id'>) {
+  return {
+    name: input.name,
+    role_id: input.roleId,
+    secondary_role_id: input.secondaryRoleId ?? null,
+    weekly_contract_hours: input.weeklyContractHours ?? null,
+    max_weekly_hours: input.maxWeeklyHours ?? null,
+    max_weekly_shifts: input.maxWeeklyShifts ?? null,
+    max_weekly_days: input.maxWeeklyDays ?? null,
+    preferred_weekdays: input.preferredWeekdays?.length ? input.preferredWeekdays : null,
+    preference: input.preference,
+    pinned_shift_template_ids: input.pinnedShiftTemplateIds?.length
+      ? input.pinnedShiftTemplateIds
+      : null,
+    max_weekly_shifts_by_preference:
+      input.maxWeeklyShiftsByPreference && Object.keys(input.maxWeeklyShiftsByPreference).length
+        ? input.maxWeeklyShiftsByPreference
+        : null,
+    active: input.active,
   };
 }
 
 export async function listEmployees(options?: { includeInactive?: boolean }): Promise<Employee[]> {
-  const db = await getDb();
-  const rows = options?.includeInactive
-    ? await db.getAllAsync<EmployeeRow>('SELECT * FROM employees ORDER BY name;')
-    : await db.getAllAsync<EmployeeRow>(
-        'SELECT * FROM employees WHERE active = 1 ORDER BY name;'
-      );
-  return rows.map(mapRow);
+  const query = supabase.from('employees').select('*').order('name');
+  const { data, error } = options?.includeInactive ? await query : await query.eq('active', true);
+  if (error) throw error;
+  return (data ?? []).map(mapRow);
 }
 
 export async function getEmployee(id: string): Promise<Employee | null> {
-  const db = await getDb();
-  const row = await db.getFirstAsync<EmployeeRow>('SELECT * FROM employees WHERE id = ?;', [id]);
-  return row ? mapRow(row) : null;
+  const { data, error } = await supabase.from('employees').select('*').eq('id', id).maybeSingle();
+  if (error) throw error;
+  return data ? mapRow(data) : null;
 }
 
 export async function createEmployee(input: Omit<Employee, 'id'>): Promise<Employee> {
-  const db = await getDb();
-  const id = generateId();
-  await db.runAsync(
-    `INSERT INTO employees
-      (id, name, role_id, secondary_role_id, weekly_contract_hours, max_weekly_hours,
-       max_weekly_shifts, max_weekly_days, preferred_weekdays, preference,
-       pinned_shift_template_ids, max_weekly_shifts_by_preference, active)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
-    [
-      id,
-      input.name,
-      input.roleId,
-      input.secondaryRoleId ?? null,
-      input.weeklyContractHours ?? null,
-      input.maxWeeklyHours ?? null,
-      input.maxWeeklyShifts ?? null,
-      input.maxWeeklyDays ?? null,
-      input.preferredWeekdays?.length ? input.preferredWeekdays.join(',') : null,
-      input.preference,
-      input.pinnedShiftTemplateIds?.length ? input.pinnedShiftTemplateIds.join(',') : null,
-      input.maxWeeklyShiftsByPreference && Object.keys(input.maxWeeklyShiftsByPreference).length
-        ? JSON.stringify(input.maxWeeklyShiftsByPreference)
-        : null,
-      input.active ? 1 : 0,
-    ]
-  );
-  return { id, ...input };
+  const { data, error } = await supabase.from('employees').insert(toRow(input)).select().single();
+  if (error) throw error;
+  return mapRow(data);
 }
 
 export async function updateEmployee(employee: Employee): Promise<void> {
-  const db = await getDb();
-  await db.runAsync(
-    `UPDATE employees SET
-      name = ?, role_id = ?, secondary_role_id = ?, weekly_contract_hours = ?, max_weekly_hours = ?,
-      max_weekly_shifts = ?, max_weekly_days = ?, preferred_weekdays = ?, preference = ?,
-      pinned_shift_template_ids = ?, max_weekly_shifts_by_preference = ?, active = ?
-     WHERE id = ?;`,
-    [
-      employee.name,
-      employee.roleId,
-      employee.secondaryRoleId ?? null,
-      employee.weeklyContractHours ?? null,
-      employee.maxWeeklyHours ?? null,
-      employee.maxWeeklyShifts ?? null,
-      employee.maxWeeklyDays ?? null,
-      employee.preferredWeekdays?.length ? employee.preferredWeekdays.join(',') : null,
-      employee.preference,
-      employee.pinnedShiftTemplateIds?.length ? employee.pinnedShiftTemplateIds.join(',') : null,
-      employee.maxWeeklyShiftsByPreference && Object.keys(employee.maxWeeklyShiftsByPreference).length
-        ? JSON.stringify(employee.maxWeeklyShiftsByPreference)
-        : null,
-      employee.active ? 1 : 0,
-      employee.id,
-    ]
-  );
+  const { error } = await supabase.from('employees').update(toRow(employee)).eq('id', employee.id);
+  if (error) throw error;
 }
 
 export async function deleteEmployee(id: string): Promise<void> {
-  const db = await getDb();
-  await db.runAsync('DELETE FROM employees WHERE id = ?;', [id]);
+  const { error } = await supabase.from('employees').delete().eq('id', id);
+  if (error) throw error;
 }

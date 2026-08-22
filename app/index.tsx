@@ -33,6 +33,12 @@ export default function HomeScreen() {
         <View style={styles.spacer} />
         <Button label={strings.home.goToLeave} variant="secondary" onPress={() => router.push('/ferie')} />
         <View style={styles.spacer} />
+        <Button
+          label="Importa dati locali"
+          variant="secondary"
+          onPress={() => router.push('/migrazione-dati')}
+        />
+        <View style={styles.spacer} />
         <Button label="Esci" variant="danger" onPress={() => signOut()} />
       </View>
     </ScreenContainer>

@@ -1,6 +1,5 @@
-import { getDb } from '@/src/db/client';
+import { supabase } from '@/src/lib/supabase';
 import { TimeOff } from '@/src/models';
-import { generateId } from '@/src/utils/id';
 
 interface TimeOffRow {
   id: string;
@@ -19,53 +18,59 @@ function mapRow(row: TimeOffRow): TimeOff {
 }
 
 export async function listTimeOffForEmployee(employeeId: string): Promise<TimeOff[]> {
-  const db = await getDb();
-  const rows = await db.getAllAsync<TimeOffRow>(
-    'SELECT * FROM time_off WHERE employee_id = ? ORDER BY date;',
-    [employeeId]
-  );
-  return rows.map(mapRow);
+  const { data, error } = await supabase
+    .from('time_off')
+    .select('*')
+    .eq('employee_id', employeeId)
+    .order('date');
+  if (error) throw error;
+  return (data ?? []).map(mapRow);
 }
 
 export async function listAllTimeOff(): Promise<TimeOff[]> {
-  const db = await getDb();
-  const rows = await db.getAllAsync<TimeOffRow>('SELECT * FROM time_off;');
-  return rows.map(mapRow);
+  const { data, error } = await supabase.from('time_off').select('*');
+  if (error) throw error;
+  return (data ?? []).map(mapRow);
 }
 
 /** Marca un giorno come ferie per il dipendente. Se già marcato, non fa nulla. */
 export async function addTimeOff(employeeId: string, date: string, note?: string): Promise<void> {
-  const db = await getDb();
-  await db.runAsync(
-    'INSERT OR IGNORE INTO time_off (id, employee_id, date, note) VALUES (?, ?, ?, ?);',
-    [generateId(), employeeId, date, note ?? null]
-  );
+  const { error } = await supabase
+    .from('time_off')
+    .upsert(
+      { employee_id: employeeId, date, note: note ?? null },
+      { onConflict: 'employee_id,date', ignoreDuplicates: true }
+    );
+  if (error) throw error;
 }
 
 /** Rimuove il giorno di ferie per il dipendente, se presente. */
 export async function removeTimeOff(employeeId: string, date: string): Promise<void> {
-  const db = await getDb();
-  await db.runAsync('DELETE FROM time_off WHERE employee_id = ? AND date = ?;', [
-    employeeId,
-    date,
-  ]);
+  const { error } = await supabase
+    .from('time_off')
+    .delete()
+    .eq('employee_id', employeeId)
+    .eq('date', date);
+  if (error) throw error;
 }
 
 /** Inverte lo stato di ferie per un giorno: lo aggiunge se assente, lo rimuove se presente. */
 export async function toggleTimeOff(employeeId: string, date: string): Promise<boolean> {
-  const db = await getDb();
-  const existing = await db.getFirstAsync<TimeOffRow>(
-    'SELECT * FROM time_off WHERE employee_id = ? AND date = ?;',
-    [employeeId, date]
-  );
+  const { data: existing, error: selectError } = await supabase
+    .from('time_off')
+    .select('id')
+    .eq('employee_id', employeeId)
+    .eq('date', date)
+    .maybeSingle();
+  if (selectError) throw selectError;
+
   if (existing) {
-    await db.runAsync('DELETE FROM time_off WHERE id = ?;', [existing.id]);
+    const { error } = await supabase.from('time_off').delete().eq('id', existing.id);
+    if (error) throw error;
     return false;
   }
-  await db.runAsync('INSERT INTO time_off (id, employee_id, date) VALUES (?, ?, ?);', [
-    generateId(),
-    employeeId,
-    date,
-  ]);
+
+  const { error } = await supabase.from('time_off').insert({ employee_id: employeeId, date });
+  if (error) throw error;
   return true;
 }

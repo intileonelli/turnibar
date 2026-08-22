@@ -1,6 +1,5 @@
-import { getDb } from '@/src/db/client';
+import { supabase } from '@/src/lib/supabase';
 import { RoleRequirement, ShiftTemplate, Weekday } from '@/src/models';
-import { generateId } from '@/src/utils/id';
 
 interface ShiftTemplateRow {
   id: string;
@@ -13,73 +12,46 @@ interface ShiftTemplateRow {
 interface RequirementRow {
   id: string;
   shift_template_id: string;
+  role_ids: string[];
   count: number;
 }
 
-interface RequirementRoleRow {
-  id: string;
-  requirement_id: string;
-  role_id: string;
-  priority: number;
-}
-
-async function loadRequirements(
-  db: Awaited<ReturnType<typeof getDb>>,
-  shiftTemplateId: string
-): Promise<RoleRequirement[]> {
-  const requirementRows = await db.getAllAsync<RequirementRow>(
-    'SELECT * FROM shift_template_requirements WHERE shift_template_id = ?;',
-    [shiftTemplateId]
+async function insertRequirements(shiftTemplateId: string, requirements: RoleRequirement[]): Promise<void> {
+  if (!requirements.length) return;
+  const { error } = await supabase.from('shift_template_requirements').insert(
+    requirements.map((r) => ({ shift_template_id: shiftTemplateId, role_ids: r.roleIds, count: r.count }))
   );
-  const requirements: RoleRequirement[] = [];
-  for (const req of requirementRows) {
-    const roleRows = await db.getAllAsync<RequirementRoleRow>(
-      'SELECT * FROM shift_template_requirement_roles WHERE requirement_id = ? ORDER BY priority ASC;',
-      [req.id]
-    );
-    requirements.push({ roleIds: roleRows.map((r) => r.role_id), count: req.count });
-  }
-  return requirements;
-}
-
-async function insertRequirements(
-  db: Awaited<ReturnType<typeof getDb>>,
-  shiftTemplateId: string,
-  requirements: RoleRequirement[]
-): Promise<void> {
-  for (const req of requirements) {
-    const requirementId = generateId();
-    await db.runAsync(
-      'INSERT INTO shift_template_requirements (id, shift_template_id, count) VALUES (?, ?, ?);',
-      [requirementId, shiftTemplateId, req.count]
-    );
-    for (let priority = 0; priority < req.roleIds.length; priority++) {
-      await db.runAsync(
-        'INSERT INTO shift_template_requirement_roles (id, requirement_id, role_id, priority) VALUES (?, ?, ?, ?);',
-        [generateId(), requirementId, req.roleIds[priority], priority]
-      );
-    }
-  }
+  if (error) throw error;
 }
 
 export async function listShiftTemplates(): Promise<ShiftTemplate[]> {
-  const db = await getDb();
-  const rows = await db.getAllAsync<ShiftTemplateRow>(
-    'SELECT * FROM shift_templates ORDER BY weekday, start_time;'
-  );
-  const templates: ShiftTemplate[] = [];
-  for (const row of rows) {
-    const requirements = await loadRequirements(db, row.id);
-    templates.push({
-      id: row.id,
-      weekday: row.weekday,
-      name: row.name,
-      startTime: row.start_time,
-      endTime: row.end_time,
-      requirements,
-    });
+  const { data: templateRows, error: templateError } = await supabase
+    .from('shift_templates')
+    .select('*')
+    .order('weekday')
+    .order('start_time');
+  if (templateError) throw templateError;
+
+  const { data: requirementRows, error: reqError } = await supabase
+    .from('shift_template_requirements')
+    .select('*');
+  if (reqError) throw reqError;
+
+  const requirementsByTemplate = new Map<string, RoleRequirement[]>();
+  for (const r of (requirementRows ?? []) as RequirementRow[]) {
+    const list = requirementsByTemplate.get(r.shift_template_id) ?? [];
+    list.push({ roleIds: r.role_ids, count: r.count });
+    requirementsByTemplate.set(r.shift_template_id, list);
   }
-  return templates;
+
+  return ((templateRows ?? []) as ShiftTemplateRow[]).map((row) => ({
+    id: row.id,
+    weekday: row.weekday,
+    name: row.name,
+    startTime: row.start_time,
+    endTime: row.end_time,
+    requirements: requirementsByTemplate.get(row.id) ?? [],
+  }));
 }
 
 export async function listShiftTemplatesForWeekday(weekday: Weekday): Promise<ShiftTemplate[]> {
@@ -88,53 +60,72 @@ export async function listShiftTemplatesForWeekday(weekday: Weekday): Promise<Sh
 }
 
 export async function createShiftTemplate(input: Omit<ShiftTemplate, 'id'>): Promise<ShiftTemplate> {
-  const db = await getDb();
-  const id = generateId();
-  await db.withTransactionAsync(async () => {
-    await db.runAsync(
-      'INSERT INTO shift_templates (id, weekday, name, start_time, end_time) VALUES (?, ?, ?, ?, ?);',
-      [id, input.weekday, input.name, input.startTime, input.endTime]
-    );
-    await insertRequirements(db, id, input.requirements);
-  });
-  return { id, ...input };
+  const { data: template, error } = await supabase
+    .from('shift_templates')
+    .insert({
+      weekday: input.weekday,
+      name: input.name,
+      start_time: input.startTime,
+      end_time: input.endTime,
+    })
+    .select()
+    .single();
+  if (error) throw error;
+
+  await insertRequirements(template.id, input.requirements);
+
+  return { id: template.id, ...input };
 }
 
 export async function updateShiftTemplate(template: ShiftTemplate): Promise<void> {
-  const db = await getDb();
-  await db.withTransactionAsync(async () => {
-    await db.runAsync(
-      'UPDATE shift_templates SET weekday = ?, name = ?, start_time = ?, end_time = ? WHERE id = ?;',
-      [template.weekday, template.name, template.startTime, template.endTime, template.id]
-    );
-    await db.runAsync('DELETE FROM shift_template_requirements WHERE shift_template_id = ?;', [
-      template.id,
-    ]);
-    await insertRequirements(db, template.id, template.requirements);
-  });
+  const { error } = await supabase
+    .from('shift_templates')
+    .update({
+      weekday: template.weekday,
+      name: template.name,
+      start_time: template.startTime,
+      end_time: template.endTime,
+    })
+    .eq('id', template.id);
+  if (error) throw error;
+
+  const { error: deleteError } = await supabase
+    .from('shift_template_requirements')
+    .delete()
+    .eq('shift_template_id', template.id);
+  if (deleteError) throw deleteError;
+
+  await insertRequirements(template.id, template.requirements);
 }
 
 export async function deleteShiftTemplate(id: string): Promise<void> {
-  const db = await getDb();
-  await db.withTransactionAsync(async () => {
-    // Le assegnazioni generate per questo turno tipo non hanno un ON DELETE CASCADE
-    // (sono un dato storico legato a una pianificazione salvata), quindi vanno rimosse
-    // esplicitamente prima di eliminare il turno tipo, altrimenti il vincolo di integrità
-    // referenziale blocca la cancellazione.
-    await db.runAsync('DELETE FROM shift_assignments WHERE shift_template_id = ?;', [id]);
-    await db.runAsync('DELETE FROM shift_templates WHERE id = ?;', [id]);
-  });
+  const { error: assignmentsError } = await supabase
+    .from('shift_assignments')
+    .delete()
+    .eq('shift_template_id', id);
+  if (assignmentsError) throw assignmentsError;
+
+  const { error } = await supabase.from('shift_templates').delete().eq('id', id);
+  if (error) throw error;
 }
 
 /** Elimina in un colpo solo tutti i turni tipo di un giorno della settimana. */
 export async function deleteShiftTemplatesForWeekday(weekday: Weekday): Promise<void> {
-  const db = await getDb();
-  await db.withTransactionAsync(async () => {
-    await db.runAsync(
-      `DELETE FROM shift_assignments
-        WHERE shift_template_id IN (SELECT id FROM shift_templates WHERE weekday = ?);`,
-      [weekday]
-    );
-    await db.runAsync('DELETE FROM shift_templates WHERE weekday = ?;', [weekday]);
-  });
+  const { data: templates, error: templatesError } = await supabase
+    .from('shift_templates')
+    .select('id')
+    .eq('weekday', weekday);
+  if (templatesError) throw templatesError;
+
+  const ids = (templates ?? []).map((t) => t.id);
+  if (ids.length) {
+    const { error: assignmentsError } = await supabase
+      .from('shift_assignments')
+      .delete()
+      .in('shift_template_id', ids);
+    if (assignmentsError) throw assignmentsError;
+  }
+
+  const { error } = await supabase.from('shift_templates').delete().eq('weekday', weekday);
+  if (error) throw error;
 }
