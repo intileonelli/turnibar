@@ -49,6 +49,7 @@ describe('generateSchedule', () => {
       shiftTemplates,
       unavailabilities: [],
       timeOff: [],
+      allowMultipleShiftsPerDay: true,
     };
 
     const result = generateSchedule(input, ROLES);
@@ -86,6 +87,7 @@ describe('generateSchedule', () => {
         shiftTemplates,
         unavailabilities,
         timeOff: [],
+        allowMultipleShiftsPerDay: true,
       },
       ROLES
     );
@@ -117,6 +119,7 @@ describe('generateSchedule', () => {
         shiftTemplates,
         unavailabilities: [],
         timeOff,
+        allowMultipleShiftsPerDay: true,
       },
       ROLES
     );
@@ -149,6 +152,7 @@ describe('generateSchedule', () => {
         shiftTemplates,
         unavailabilities: [],
         timeOff: [],
+        allowMultipleShiftsPerDay: true,
       },
       ROLES
     );
@@ -193,6 +197,7 @@ describe('generateSchedule', () => {
         shiftTemplates,
         unavailabilities: [],
         timeOff: [],
+        allowMultipleShiftsPerDay: true,
       },
       ROLES
     );
@@ -234,6 +239,7 @@ describe('generateSchedule', () => {
         shiftTemplates,
         unavailabilities: [],
         timeOff: [],
+        allowMultipleShiftsPerDay: true,
       },
       ROLES
     );
@@ -277,6 +283,7 @@ describe('generateSchedule', () => {
         shiftTemplates,
         unavailabilities: [],
         timeOff: [],
+        allowMultipleShiftsPerDay: true,
       },
       ROLES
     );
@@ -318,6 +325,7 @@ describe('generateSchedule', () => {
         shiftTemplates,
         unavailabilities: [],
         timeOff: [],
+        allowMultipleShiftsPerDay: true,
       },
       ROLES
     );
@@ -358,6 +366,7 @@ describe('generateSchedule', () => {
         shiftTemplates,
         unavailabilities: [],
         timeOff: [],
+        allowMultipleShiftsPerDay: true,
       },
       ROLES
     );
@@ -396,6 +405,7 @@ describe('generateSchedule', () => {
         shiftTemplates,
         unavailabilities: [],
         timeOff: [],
+        allowMultipleShiftsPerDay: true,
       },
       ROLES
     );
@@ -409,6 +419,7 @@ describe('generateSchedule', () => {
         shiftTemplates,
         unavailabilities: [],
         timeOff: [{ id: 't1', employeeId: 'cuoca', date: WEEK_START }],
+        allowMultipleShiftsPerDay: true,
       },
       ROLES
     );
@@ -443,6 +454,7 @@ describe('generateSchedule', () => {
         shiftTemplates,
         unavailabilities: [],
         timeOff: [],
+        allowMultipleShiftsPerDay: true,
       },
       ROLES
     );
@@ -487,6 +499,7 @@ describe('generateSchedule', () => {
         shiftTemplates,
         unavailabilities: [],
         timeOff: [],
+        allowMultipleShiftsPerDay: true,
       },
       ROLES
     );
@@ -527,6 +540,7 @@ describe('generateSchedule', () => {
         shiftTemplates,
         unavailabilities: [],
         timeOff: [],
+        allowMultipleShiftsPerDay: true,
       },
       ROLES
     );
@@ -563,6 +577,7 @@ describe('generateSchedule', () => {
         shiftTemplates,
         unavailabilities: [],
         timeOff: [],
+        allowMultipleShiftsPerDay: true,
       },
       ROLES
     );
@@ -597,6 +612,7 @@ describe('generateSchedule', () => {
         shiftTemplates,
         unavailabilities: [],
         timeOff: [],
+        allowMultipleShiftsPerDay: true,
       },
       ROLES
     );
@@ -631,6 +647,7 @@ describe('generateSchedule', () => {
         shiftTemplates,
         unavailabilities: [],
         timeOff: [{ id: 't1', employeeId: 'anna', date: '2026-08-04' }], // martedì della settimana
+        allowMultipleShiftsPerDay: true,
       },
       ROLES
     );
@@ -665,6 +682,7 @@ describe('generateSchedule', () => {
         shiftTemplates,
         unavailabilities: [],
         timeOff: [],
+        allowMultipleShiftsPerDay: true,
       },
       ROLES
     );
@@ -700,7 +718,14 @@ describe('generateSchedule', () => {
     ];
 
     const withBoth = generateSchedule(
-      { weekStartDate: WEEK_START, employees: [anna, bruno], shiftTemplates: oneSlot, unavailabilities: [], timeOff: [] },
+      {
+        weekStartDate: WEEK_START,
+        employees: [anna, bruno],
+        shiftTemplates: oneSlot,
+        unavailabilities: [],
+        timeOff: [],
+        allowMultipleShiftsPerDay: true,
+      },
       ROLES
     );
     expect(withBoth.assignments[0].employeeId).toBe('bruno');
@@ -713,10 +738,63 @@ describe('generateSchedule', () => {
         shiftTemplates: oneSlot,
         unavailabilities: [{ id: 'u1', employeeId: 'bruno', weekday: 1, startTime: '09:00', endTime: '13:00' }],
         timeOff: [],
+        allowMultipleShiftsPerDay: true,
       },
       ROLES
     );
     expect(withOnlyLowPriorityAvailable.assignments[0].employeeId).toBe('anna');
     expect(withOnlyLowPriorityAvailable.unresolvedShifts).toHaveLength(0);
+  });
+
+  it('non mette mai lo stesso dipendente in due turni nello stesso giorno quando l\'azienda non lo permette', () => {
+    const anna = makeEmployee({ id: 'anna', name: 'Anna', roleId: ROLE_COMMESSO.id });
+
+    // Due turni non sovrapposti nello stesso giorno, copribili solo da Anna.
+    const shiftTemplates: ShiftTemplate[] = [
+      {
+        id: 'shift-apertura',
+        weekday: 1,
+        name: 'Apertura',
+        startTime: '06:00',
+        endTime: '12:00',
+        requirements: [{ roleIds: [ROLE_COMMESSO.id], count: 1 }],
+      },
+      {
+        id: 'shift-sera',
+        weekday: 1,
+        name: 'Sera',
+        startTime: '18:00',
+        endTime: '22:00',
+        requirements: [{ roleIds: [ROLE_COMMESSO.id], count: 1 }],
+      },
+    ];
+
+    const notAllowed = generateSchedule(
+      {
+        weekStartDate: WEEK_START,
+        employees: [anna],
+        shiftTemplates,
+        unavailabilities: [],
+        timeOff: [],
+        allowMultipleShiftsPerDay: false,
+      },
+      ROLES
+    );
+    expect(notAllowed.assignments).toHaveLength(1);
+    expect(notAllowed.unresolvedShifts).toHaveLength(1);
+
+    const allowed = generateSchedule(
+      {
+        weekStartDate: WEEK_START,
+        employees: [anna],
+        shiftTemplates,
+        unavailabilities: [],
+        timeOff: [],
+        allowMultipleShiftsPerDay: true,
+      },
+      ROLES
+    );
+    expect(allowed.assignments).toHaveLength(2);
+    expect(allowed.unresolvedShifts).toHaveLength(0);
   });
 });

@@ -8,6 +8,8 @@ export interface EngineInput {
   shiftTemplates: ShiftTemplate[];
   unavailabilities: Unavailability[];
   timeOff: TimeOff[];
+  /** Se un dipendente può avere più di un turno nello stesso giorno (impostazione del negozio). */
+  allowMultipleShiftsPerDay: boolean;
 }
 
 export interface GeneratedAssignment {

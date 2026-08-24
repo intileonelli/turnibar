@@ -64,10 +64,16 @@ export function findHardConstraintFailure(
   }
 
   const rangesOnDate = state.getRangesOn(employee.id, slot.date);
-  const hasDoubleBooking = rangesOnDate.some((r) =>
-    rangesOverlap(slot.startTime, slot.endTime, r.start, r.end)
-  );
-  if (hasDoubleBooking) return 'double_booking';
+  if (context.allowMultipleShiftsPerDay) {
+    const hasOverlap = rangesOnDate.some((r) =>
+      rangesOverlap(slot.startTime, slot.endTime, r.start, r.end)
+    );
+    if (hasOverlap) return 'double_booking';
+  } else if (rangesOnDate.length > 0) {
+    // L'azienda non permette più turni nello stesso giorno per lo stesso dipendente, anche se
+    // non si sovrappongono: basta che ne abbia già uno quel giorno per escluderlo.
+    return 'double_booking';
+  }
 
   return null;
 }

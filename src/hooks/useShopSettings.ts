@@ -4,7 +4,7 @@ import { shopRepository } from '@/src/db/repositories';
 import { ShopSettings } from '@/src/models';
 
 export function useShopSettings() {
-  const [settings, setSettings] = useState<ShopSettings>({});
+  const [settings, setSettings] = useState<ShopSettings>({ allowMultipleShiftsPerDay: false });
   const [loading, setLoading] = useState(true);
 
   const reload = useCallback(async () => {

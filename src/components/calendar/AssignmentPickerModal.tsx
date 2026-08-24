@@ -26,6 +26,7 @@ interface AssignmentPickerModalProps {
   shiftTemplates: ShiftTemplate[];
   unavailabilities: Unavailability[];
   timeOff: TimeOff[];
+  allowMultipleShiftsPerDay: boolean;
   onSelectEmployee: (employeeId: string) => void;
   onRemove?: () => void;
 }
@@ -43,6 +44,7 @@ export function AssignmentPickerModal({
   shiftTemplates,
   unavailabilities,
   timeOff,
+  allowMultipleShiftsPerDay,
   onSelectEmployee,
   onRemove,
 }: AssignmentPickerModalProps) {
@@ -104,6 +106,7 @@ export function AssignmentPickerModal({
                 otherAssignmentsForEmployee: otherAssignments,
                 unavailabilities,
                 timeOff,
+                allowMultipleShiftsPerDay,
               });
               const hardViolations = violations.filter((v) => v.severity === 'hard');
               const softViolations = violations.filter((v) => v.severity === 'soft');

@@ -62,7 +62,7 @@ function buildUnresolvedShifts(unresolvedSlots: Slot[], roles: Role[]): Unresolv
  */
 export function generateSchedule(input: EngineInput, roles: Role[] = []): ScheduleResult {
   const slots = buildSlots(input);
-  const context = buildSolverContext(input.unavailabilities, input.timeOff);
+  const context = buildSolverContext(input.unavailabilities, input.timeOff, input.allowMultipleShiftsPerDay);
   const activeEmployees = input.employees.filter((e) => e.active);
 
   const { state, unresolvedSlots } = solveSchedule(slots, activeEmployees, context);

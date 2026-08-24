@@ -12,6 +12,7 @@ import { useSchedule } from '@/src/hooks/useSchedule';
 import { useEmployees } from '@/src/hooks/useEmployees';
 import { useRoles } from '@/src/hooks/useRoles';
 import { useShiftTemplates } from '@/src/hooks/useShiftTemplates';
+import { useShopSettings } from '@/src/hooks/useShopSettings';
 import { unavailabilityRepository, timeOffRepository } from '@/src/db/repositories';
 import { ShiftAssignment, ShiftTemplate, TimeOff, Unavailability } from '@/src/models';
 import { formatDateLong } from '@/src/utils/date';
@@ -34,6 +35,7 @@ export default function CalendarScreen() {
   const { employees } = useEmployees();
   const { roles } = useRoles();
   const { shiftTemplates } = useShiftTemplates();
+  const { settings: shopSettings } = useShopSettings();
 
   const [unavailabilities, setUnavailabilities] = useState<Unavailability[]>([]);
   const [timeOff, setTimeOff] = useState<TimeOff[]>([]);
@@ -141,6 +143,7 @@ export default function CalendarScreen() {
         shiftTemplates={shiftTemplates}
         unavailabilities={unavailabilities}
         timeOff={timeOff}
+        allowMultipleShiftsPerDay={shopSettings.allowMultipleShiftsPerDay}
         onSelectEmployee={handleSelectEmployee}
         onRemove={pickerTarget?.currentAssignmentId ? handleRemove : undefined}
       />

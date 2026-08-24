@@ -43,7 +43,7 @@ interface ShopSettingsRow {
 export async function getShopSettings(): Promise<ShopSettings> {
   const db = await getDb();
   const row = await db.getFirstAsync<ShopSettingsRow>('SELECT * FROM shop_settings WHERE id = 1;');
-  return { maxDailyTimeOff: row?.max_daily_time_off ?? undefined };
+  return { maxDailyTimeOff: row?.max_daily_time_off ?? undefined, allowMultipleShiftsPerDay: false };
 }
 
 export async function updateShopSettings(settings: ShopSettings): Promise<void> {

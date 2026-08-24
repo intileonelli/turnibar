@@ -41,13 +41,19 @@ export async function updateOpeningHours(entry: OpeningHours): Promise<void> {
 export async function getShopSettings(): Promise<ShopSettings> {
   const { data, error } = await supabase.rpc('get_shop_settings');
   if (error) throw error;
-  const row = data?.[0] as { max_daily_time_off: number | null } | undefined;
-  return { maxDailyTimeOff: row?.max_daily_time_off ?? undefined };
+  const row = data?.[0] as
+    | { max_daily_time_off: number | null; allow_multiple_shifts_per_day: boolean }
+    | undefined;
+  return {
+    maxDailyTimeOff: row?.max_daily_time_off ?? undefined,
+    allowMultipleShiftsPerDay: row?.allow_multiple_shifts_per_day ?? false,
+  };
 }
 
 export async function updateShopSettings(settings: ShopSettings): Promise<void> {
   const { error } = await supabase.rpc('update_shop_settings', {
     p_max_daily_time_off: settings.maxDailyTimeOff ?? null,
+    p_allow_multiple_shifts_per_day: settings.allowMultipleShiftsPerDay,
   });
   if (error) throw error;
 }

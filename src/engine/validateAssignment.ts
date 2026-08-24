@@ -26,6 +26,8 @@ export interface ValidateAssignmentInput {
   otherAssignmentsForEmployee: OtherAssignment[];
   unavailabilities: Unavailability[];
   timeOff: TimeOff[];
+  /** Se un dipendente può avere più di un turno nello stesso giorno (impostazione del negozio). */
+  allowMultipleShiftsPerDay: boolean;
 }
 
 /**
@@ -129,15 +131,25 @@ export function validateAssignment(input: ValidateAssignmentInput): ConstraintVi
     }
   }
 
-  const hasDoubleBooking = input.otherAssignmentsForEmployee.some(
-    (a) => a.date === slot.date && rangesOverlap(slot.startTime, slot.endTime, a.startTime, a.endTime)
-  );
-  if (hasDoubleBooking) {
+  const assignmentsSameDate = input.otherAssignmentsForEmployee.filter((a) => a.date === slot.date);
+  if (input.allowMultipleShiftsPerDay) {
+    const hasOverlap = assignmentsSameDate.some((a) =>
+      rangesOverlap(slot.startTime, slot.endTime, a.startTime, a.endTime)
+    );
+    if (hasOverlap) {
+      violations.push({
+        ...base,
+        type: 'double_booking',
+        severity: 'hard',
+        message: `${employee.name} è già assegnato a un turno sovrapposto in questa data.`,
+      });
+    }
+  } else if (assignmentsSameDate.length > 0) {
     violations.push({
       ...base,
       type: 'double_booking',
       severity: 'hard',
-      message: `${employee.name} è già assegnato a un turno sovrapposto in questa data.`,
+      message: `${employee.name} ha già un turno in questa data e l'azienda non permette più turni nello stesso giorno.`,
     });
   }
 

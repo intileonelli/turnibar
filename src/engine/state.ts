@@ -6,11 +6,14 @@ import { Slot } from './types';
 export interface SolverContext {
   unavailabilitiesByEmployee: Map<string, Unavailability[]>;
   timeOffDatesByEmployee: Map<string, Set<string>>;
+  /** Se un dipendente può avere più di un turno nello stesso giorno (impostazione del negozio). */
+  allowMultipleShiftsPerDay: boolean;
 }
 
 export function buildSolverContext(
   unavailabilities: Unavailability[],
-  timeOff: TimeOff[]
+  timeOff: TimeOff[],
+  allowMultipleShiftsPerDay: boolean
 ): SolverContext {
   const unavailabilitiesByEmployee = new Map<string, Unavailability[]>();
   for (const u of unavailabilities) {
@@ -26,7 +29,7 @@ export function buildSolverContext(
     timeOffDatesByEmployee.set(t.employeeId, set);
   }
 
-  return { unavailabilitiesByEmployee, timeOffDatesByEmployee };
+  return { unavailabilitiesByEmployee, timeOffDatesByEmployee, allowMultipleShiftsPerDay };
 }
 
 interface TimeRange {

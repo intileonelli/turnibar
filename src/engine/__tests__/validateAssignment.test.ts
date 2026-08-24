@@ -34,6 +34,7 @@ describe('validateAssignment', () => {
       otherAssignmentsForEmployee: [],
       unavailabilities: [],
       timeOff: [],
+      allowMultipleShiftsPerDay: true,
     });
 
     expect(violations).toHaveLength(0);
@@ -48,6 +49,7 @@ describe('validateAssignment', () => {
       otherAssignmentsForEmployee: [],
       unavailabilities: [],
       timeOff: [],
+      allowMultipleShiftsPerDay: true,
     });
 
     expect(violations.some((v) => v.type === 'role_mismatch' && v.severity === 'hard')).toBe(true);
@@ -65,6 +67,7 @@ describe('validateAssignment', () => {
       otherAssignmentsForEmployee: [],
       unavailabilities,
       timeOff: [],
+      allowMultipleShiftsPerDay: true,
     });
 
     expect(violations.some((v) => v.type === 'unavailability')).toBe(true);
@@ -80,6 +83,7 @@ describe('validateAssignment', () => {
       otherAssignmentsForEmployee: [],
       unavailabilities: [],
       timeOff,
+      allowMultipleShiftsPerDay: true,
     });
 
     expect(violations.some((v) => v.type === 'time_off')).toBe(true);
@@ -94,6 +98,7 @@ describe('validateAssignment', () => {
       otherAssignmentsForEmployee: [{ date: '2026-08-04', startTime: '09:00', endTime: '13:00' }],
       unavailabilities: [],
       timeOff: [],
+      allowMultipleShiftsPerDay: true,
     });
 
     expect(violations.some((v) => v.type === 'max_hours')).toBe(true);
@@ -114,6 +119,7 @@ describe('validateAssignment', () => {
       otherAssignmentsForEmployee: [{ date: '2026-08-04', startTime: '09:00', endTime: '13:00' }],
       unavailabilities: [],
       timeOff: [],
+      allowMultipleShiftsPerDay: true,
     });
 
     expect(violations.some((v) => v.type === 'max_shifts')).toBe(true);
@@ -128,6 +134,7 @@ describe('validateAssignment', () => {
       otherAssignmentsForEmployee: [{ date: '2026-08-03', startTime: '12:00', endTime: '16:00' }],
       unavailabilities: [],
       timeOff: [],
+      allowMultipleShiftsPerDay: true,
     });
 
     expect(violations.some((v) => v.type === 'double_booking')).toBe(true);
@@ -142,6 +149,7 @@ describe('validateAssignment', () => {
       otherAssignmentsForEmployee: [],
       unavailabilities: [],
       timeOff: [],
+      allowMultipleShiftsPerDay: true,
     });
 
     const preferenceViolation = violations.find((v) => v.type === 'preference_mismatch');
@@ -159,6 +167,7 @@ describe('validateAssignment', () => {
       otherAssignmentsForEmployee: [],
       unavailabilities: [],
       timeOff: [],
+      allowMultipleShiftsPerDay: true,
     });
 
     expect(violations.some((v) => v.type === 'role_mismatch')).toBe(false);
@@ -174,6 +183,7 @@ describe('validateAssignment', () => {
       otherAssignmentsForEmployee: [],
       unavailabilities: [],
       timeOff: [],
+      allowMultipleShiftsPerDay: true,
     });
 
     const roleViolation = violations.find((v) => v.type === 'role_mismatch');
@@ -193,6 +203,7 @@ describe('validateAssignment', () => {
       ],
       unavailabilities: [],
       timeOff: [],
+      allowMultipleShiftsPerDay: true,
     });
 
     expect(violations.some((v) => v.type === 'max_hours')).toBe(false);
@@ -207,6 +218,7 @@ describe('validateAssignment', () => {
       otherAssignmentsForEmployee: [{ date: '2026-08-04', startTime: '09:00', endTime: '13:00' }],
       unavailabilities: [],
       timeOff: [],
+      allowMultipleShiftsPerDay: true,
     });
 
     expect(violations.some((v) => v.type === 'max_days')).toBe(true);
@@ -221,6 +233,7 @@ describe('validateAssignment', () => {
       otherAssignmentsForEmployee: [{ date: '2026-08-03', startTime: '14:00', endTime: '18:00' }],
       unavailabilities: [],
       timeOff: [],
+      allowMultipleShiftsPerDay: true,
     });
 
     expect(violations.some((v) => v.type === 'max_days')).toBe(false);
@@ -240,6 +253,7 @@ describe('validateAssignment', () => {
       otherAssignmentsForEmployee: [],
       unavailabilities: [],
       timeOff: [],
+      allowMultipleShiftsPerDay: true,
     });
 
     expect(violations.some((v) => v.type === 'role_mismatch' && v.severity === 'hard')).toBe(false);
@@ -259,6 +273,7 @@ describe('validateAssignment', () => {
       otherAssignmentsForEmployee: [{ date: '2026-08-04', startTime: '09:00', endTime: '13:00' }],
       unavailabilities: [],
       timeOff: [],
+      allowMultipleShiftsPerDay: true,
     });
 
     expect(violations.some((v) => v.type === 'max_preference_shifts')).toBe(true);
@@ -278,6 +293,7 @@ describe('validateAssignment', () => {
       otherAssignmentsForEmployee: [{ date: '2026-08-04', startTime: '09:00', endTime: '13:00' }],
       unavailabilities: [],
       timeOff: [],
+      allowMultipleShiftsPerDay: true,
     });
 
     expect(violations.some((v) => v.type === 'max_preference_shifts')).toBe(false);

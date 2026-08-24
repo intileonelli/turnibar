@@ -37,4 +37,6 @@ export interface ShiftTemplate {
 export interface ShopSettings {
   /** Numero massimo di dipendenti che possono essere in ferie nello stesso giorno, opzionale. */
   maxDailyTimeOff?: number;
+  /** Se un dipendente può essere assegnato a più di un turno nello stesso giorno (turni spezzati). */
+  allowMultipleShiftsPerDay: boolean;
 }

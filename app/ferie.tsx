@@ -122,7 +122,7 @@ export default function LeaveScreen() {
     }
     setSavingSettings(true);
     try {
-      await shopRepository.updateShopSettings({ maxDailyTimeOff: maxPerDay });
+      await shopRepository.updateShopSettings({ ...settings, maxDailyTimeOff: maxPerDay });
       await reloadSettings();
     } catch (err) {
       showAlert('Errore', err instanceof Error ? err.message : String(err));

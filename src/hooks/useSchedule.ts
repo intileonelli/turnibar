@@ -5,6 +5,7 @@ import {
   roleRepository,
   scheduleRepository,
   shiftTemplateRepository,
+  shopRepository,
   timeOffRepository,
   unavailabilityRepository,
 } from '@/src/db/repositories';
@@ -35,16 +36,24 @@ export function useSchedule(weekStartDate: string) {
   const generate = useCallback(async (): Promise<ScheduleResult> => {
     setGenerating(true);
     try {
-      const [employees, shiftTemplates, unavailabilities, timeOff, roles] = await Promise.all([
+      const [employees, shiftTemplates, unavailabilities, timeOff, roles, shopSettings] = await Promise.all([
         employeeRepository.listEmployees(),
         shiftTemplateRepository.listShiftTemplates(),
         unavailabilityRepository.listAllUnavailabilities(),
         timeOffRepository.listAllTimeOff(),
         roleRepository.listRoles(),
+        shopRepository.getShopSettings(),
       ]);
 
       const result = generateSchedule(
-        { weekStartDate, employees, shiftTemplates, unavailabilities, timeOff },
+        {
+          weekStartDate,
+          employees,
+          shiftTemplates,
+          unavailabilities,
+          timeOff,
+          allowMultipleShiftsPerDay: shopSettings.allowMultipleShiftsPerDay,
+        },
         roles
       );
       setLastResult(result);
