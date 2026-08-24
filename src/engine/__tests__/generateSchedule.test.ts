@@ -845,4 +845,47 @@ describe('generateSchedule', () => {
     expect(allowed.assignments).toHaveLength(2);
     expect(allowed.unresolvedShifts).toHaveLength(0);
   });
+
+  it('la preferenza di fascia oraria vince sull\'idoneità di ruolo', () => {
+    // Il turno richiede prima "cassiere", poi "commesso" come alternativa.
+    const shiftTemplates: ShiftTemplate[] = [
+      {
+        id: 'shift-sera',
+        weekday: 1,
+        name: 'Sera',
+        startTime: '18:00',
+        endTime: '22:00',
+        requirements: [{ roleIds: [ROLE_CASSIERE.id, ROLE_COMMESSO.id], count: 1 }],
+      },
+    ];
+
+    // Anna: ruolo principale "commesso" (solo seconda scelta per questo turno), ma preferisce la sera.
+    const anna = makeEmployee({
+      id: 'anna',
+      name: 'Anna',
+      roleId: ROLE_COMMESSO.id,
+      preference: 'sera',
+    });
+    // Bruno: ruolo principale "cassiere" (prima scelta, idoneità migliore), ma preferisce la mattina.
+    const bruno = makeEmployee({
+      id: 'bruno',
+      name: 'Bruno',
+      roleId: ROLE_CASSIERE.id,
+      preference: 'mattina',
+    });
+
+    const result = generateSchedule(
+      {
+        weekStartDate: WEEK_START,
+        employees: [anna, bruno],
+        shiftTemplates,
+        unavailabilities: [],
+        timeOff: [],
+        allowMultipleShiftsPerDay: true,
+      },
+      ROLES
+    );
+
+    expect(result.assignments[0].employeeId).toBe('anna');
+  });
 });

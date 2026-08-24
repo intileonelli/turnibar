@@ -3,35 +3,6 @@ import { shiftPreferenceCategory } from '../dateUtils';
 import { SolverState } from '../state';
 import { Slot } from '../types';
 
-const PREFERENCE_MATCH_BONUS = 10;
-const PREFERENCE_MISMATCH_PENALTY = -5;
-const WEEKDAY_PREFERENCE_BONUS = 8;
-const FAIRNESS_WEIGHT = 10;
-/**
- * Penalità per ogni "gradino" di priorità sceso nell'elenco ruoli di uno slot (es. ruolo
- * principale = 0, prima alternativa = 1, ...). Abbastanza alta da dominare su preferenza e
- * equità, così il ruolo principale viene sempre scelto quando disponibile, e le alternative
- * intervengono solo quando quello principale non è copribile.
- */
-const ROLE_PRIORITY_PENALTY = 50;
-/** Piccola penalità aggiuntiva se il dipendente copre lo slot con il proprio ruolo secondario. */
-const EMPLOYEE_SECONDARY_ROLE_PENALTY = 5;
-/**
- * Bonus per un turno tipo "fisso" del dipendente (es. "Inti il martedì fa sempre Sera 1").
- * Molto più alto di ogni altro fattore, così vince sempre tra i candidati idonei; se il
- * dipendente non è idoneo (ferie, indisponibilità, altri vincoli hard) semplicemente non è tra
- * i candidati e il turno va a qualcun altro come al solito.
- */
-const PINNED_SHIFT_BONUS = 1000;
-/**
- * Bonus/penalità per la priorità del dipendente ("alta"/"bassa"): abbastanza forte da far
- * preferire sistematicamente un dipendente ad alta priorità rispetto a uno a bassa quando
- * entrambi sono idonei, ma molto più debole della penalità per ruolo (50) o del bonus turno
- * fisso (1000), così un dipendente a bassa priorità viene comunque usato quando è l'unico
- * idoneo o l'unico che copre il ruolo principale dello slot.
- */
-const PRIORITY_BONUS = 15;
-
 export function preferenceMatches(employee: Employee, slot: Pick<Slot, 'startTime'>): boolean {
   if (employee.preference === 'nessuna') return true;
   return employee.preference === shiftPreferenceCategory(slot.startTime);
@@ -48,51 +19,47 @@ function matchRolePriority(employee: Employee, slot: Pick<Slot, 'roleIds'>) {
 }
 
 /**
- * Punteggio del candidato per uno slot: più alto è meglio. Combina priorità di ruolo, preferenza
- * di fascia oraria e giorno, e distribuzione equa (solo se il dipendente ha ore contrattuali
- * impostate), così la copertura dei turni resta guidata prima di tutto dall'idoneità (vincoli
- * hard) e questi fattori intervengono solo per scegliere tra candidati già idonei.
+ * "Punteggio" del candidato per uno slot, come una classifica a più livelli: si confronta prima
+ * il primo livello tra due candidati, e solo se sono pari si passa al livello successivo, e così
+ * via. In questo modo un livello superiore vince SEMPRE su uno inferiore, senza eccezioni dovute
+ * a somme di più fattori minori (a differenza di un punteggio numerico unico, dove diversi
+ * vantaggi piccoli potrebbero sommarsi e superare un vantaggio grande su un livello più
+ * importante). L'ordine, dal più al meno importante, riflette quello scelto per l'azienda:
+ * 1) turno fisso, 2) preferenza di fascia oraria, 3) idoneità di ruolo (principale o
+ * alternativa), 4) priorità del dipendente, 5) giorno della settimana preferito, 6) equità nella
+ * distribuzione delle ore. Ferie, indisponibilità e turni fissi "esclusivi" sono invece vincoli
+ * hard, già applicati prima di arrivare qui (vedi hardConstraints.ts): tra i candidati che
+ * arrivano a questo confronto sono già tutti idonei.
  */
-export function scoreCandidate(employee: Employee, slot: Slot, state: SolverState): number {
-  let score = 0;
+function rankCandidate(employee: Employee, slot: Slot, state: SolverState): number[] {
+  const pinned = employee.pinnedShiftTemplateIds?.includes(slot.shiftTemplateId) ? 1 : 0;
 
-  if (employee.pinnedShiftTemplateIds?.includes(slot.shiftTemplateId)) {
-    score += PINNED_SHIFT_BONUS;
-  }
-
-  if (employee.priority === 'alta') {
-    score += PRIORITY_BONUS;
-  } else if (employee.priority === 'bassa') {
-    score -= PRIORITY_BONUS;
+  let preference = 0;
+  if (employee.preference !== 'nessuna') {
+    preference = shiftPreferenceCategory(slot.startTime) === employee.preference ? 1 : -1;
   }
 
   const { priorityIndex, usedSecondary } = matchRolePriority(employee, slot);
-  if (priorityIndex > 0) {
-    score -= priorityIndex * ROLE_PRIORITY_PENALTY;
-  }
-  if (usedSecondary) {
-    score -= EMPLOYEE_SECONDARY_ROLE_PENALTY;
-  }
+  const role = -(priorityIndex * 2 + (usedSecondary ? 1 : 0));
 
-  if (employee.preference !== 'nessuna') {
-    score +=
-      shiftPreferenceCategory(slot.startTime) === employee.preference
-        ? PREFERENCE_MATCH_BONUS
-        : PREFERENCE_MISMATCH_PENALTY;
-  }
+  const priority = employee.priority === 'alta' ? 1 : employee.priority === 'bassa' ? -1 : 0;
 
-  if (employee.preferredWeekdays && employee.preferredWeekdays.length > 0) {
-    if (employee.preferredWeekdays.includes(slot.weekday)) {
-      score += WEEKDAY_PREFERENCE_BONUS;
-    }
-  }
+  const weekday = employee.preferredWeekdays?.includes(slot.weekday) ? 1 : 0;
 
+  let fairness = 0;
   if (employee.weeklyContractHours !== undefined && employee.weeklyContractHours > 0) {
-    const fillRatio = state.getHours(employee.id) / employee.weeklyContractHours;
-    score += (1 - fillRatio) * FAIRNESS_WEIGHT;
+    fairness = 1 - state.getHours(employee.id) / employee.weeklyContractHours;
   }
 
-  return score;
+  return [pinned, preference, role, priority, weekday, fairness];
+}
+
+/** Confronta due classifiche livello per livello: il primo livello diverso decide, i successivi contano solo a parità. */
+function compareRanks(a: number[], b: number[]): number {
+  for (let i = 0; i < a.length; i++) {
+    if (a[i] !== b[i]) return b[i] - a[i];
+  }
+  return 0;
 }
 
 export function sortCandidatesByScore(
@@ -100,5 +67,5 @@ export function sortCandidatesByScore(
   slot: Slot,
   state: SolverState
 ): Employee[] {
-  return [...employees].sort((a, b) => scoreCandidate(b, slot, state) - scoreCandidate(a, slot, state));
+  return [...employees].sort((a, b) => compareRanks(rankCandidate(a, slot, state), rankCandidate(b, slot, state)));
 }
