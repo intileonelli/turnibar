@@ -7,6 +7,7 @@ interface ShiftTemplateRow {
   name: string;
   start_time: string;
   end_time: string;
+  category_id: string;
 }
 
 interface RequirementRow {
@@ -50,6 +51,7 @@ export async function listShiftTemplates(): Promise<ShiftTemplate[]> {
     name: row.name,
     startTime: row.start_time,
     endTime: row.end_time,
+    categoryId: row.category_id,
     requirements: requirementsByTemplate.get(row.id) ?? [],
   }));
 }
@@ -67,6 +69,7 @@ export async function createShiftTemplate(input: Omit<ShiftTemplate, 'id'>): Pro
       name: input.name,
       start_time: input.startTime,
       end_time: input.endTime,
+      category_id: input.categoryId,
     })
     .select()
     .single();
@@ -85,6 +88,7 @@ export async function updateShiftTemplate(template: ShiftTemplate): Promise<void
       name: template.name,
       start_time: template.startTime,
       end_time: template.endTime,
+      category_id: template.categoryId,
     })
     .eq('id', template.id);
   if (error) throw error;

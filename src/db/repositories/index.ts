@@ -1,4 +1,5 @@
 export * as roleRepository from './roleRepository';
+export * as shiftCategoryRepository from './shiftCategoryRepository';
 export * as employeeRepository from './employeeRepository';
 export * as unavailabilityRepository from './unavailabilityRepository';
 export * as timeOffRepository from './timeOffRepository';

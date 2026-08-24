@@ -10,27 +10,25 @@ import { showAlert } from '@/src/utils/alert';
 import { timeToMinutes } from '@/src/engine';
 import { useRoles } from '@/src/hooks/useRoles';
 import { useShiftTemplates } from '@/src/hooks/useShiftTemplates';
+import { useShiftCategories } from '@/src/hooks/useShiftCategories';
 import { employeeRepository } from '@/src/db/repositories';
 import {
   Employee,
   EMPLOYEE_PRIORITY_LABELS,
   EmployeePriority,
-  SHIFT_PREFERENCE_LABELS,
-  ShiftPreference,
   WEEKDAY_LABELS,
   Weekday,
   WEEKDAYS,
 } from '@/src/models';
 import { strings } from '@/src/i18n/strings';
 
-const PREFERENCES: ShiftPreference[] = ['nessuna', 'mattina', 'pomeriggio', 'sera'];
-const PREFERENCE_CATEGORIES: Exclude<ShiftPreference, 'nessuna'>[] = ['mattina', 'pomeriggio', 'sera'];
 const PRIORITIES: EmployeePriority[] = ['alta', 'normale', 'bassa'];
 
 export default function NewEmployeeScreen() {
   const router = useRouter();
   const { roles } = useRoles();
   const { shiftTemplates } = useShiftTemplates();
+  const { categories } = useShiftCategories();
 
   const [name, setName] = useState('');
   const [roleId, setRoleId] = useState<string | null>(null);
@@ -40,9 +38,9 @@ export default function NewEmployeeScreen() {
   const [maxWeeklyShifts, setMaxWeeklyShifts] = useState('');
   const [maxWeeklyDays, setMaxWeeklyDays] = useState('');
   const [preferredWeekdays, setPreferredWeekdays] = useState<Set<Weekday>>(new Set());
-  const [preference, setPreference] = useState<ShiftPreference>('nessuna');
+  const [preferredCategoryId, setPreferredCategoryId] = useState<string | null>(null);
   const [pinnedShiftTemplateIds, setPinnedShiftTemplateIds] = useState<Set<string>>(new Set());
-  const [maxByPreference, setMaxByPreference] = useState<Record<string, string>>({});
+  const [maxByCategory, setMaxByCategory] = useState<Record<string, string>>({});
   const [priority, setPriority] = useState<EmployeePriority>('normale');
   const [saving, setSaving] = useState(false);
 
@@ -110,16 +108,16 @@ export default function NewEmployeeScreen() {
       }
     }
 
-    const maxWeeklyShiftsByPreference: Employee['maxWeeklyShiftsByPreference'] = {};
-    for (const category of PREFERENCE_CATEGORIES) {
-      const raw = maxByPreference[category];
+    const maxWeeklyShiftsByCategory: Employee['maxWeeklyShiftsByCategory'] = {};
+    for (const category of categories) {
+      const raw = maxByCategory[category.id];
       if (raw && raw.trim()) {
         const value = Number(raw);
         if (!Number.isInteger(value) || value <= 0) {
-          showAlert('Valore non valido', `Inserisci un numero intero valido per il limite di ${category}, oppure lascia il campo vuoto.`);
+          showAlert('Valore non valido', `Inserisci un numero intero valido per il limite di ${category.name}, oppure lascia il campo vuoto.`);
           return;
         }
-        maxWeeklyShiftsByPreference[category] = value;
+        maxWeeklyShiftsByCategory[category.id] = value;
       }
     }
 
@@ -134,10 +132,10 @@ export default function NewEmployeeScreen() {
         maxWeeklyShifts: maxWeeklyShifts ? Number(maxWeeklyShifts) : undefined,
         maxWeeklyDays: maxDays,
         preferredWeekdays: preferredWeekdays.size > 0 ? [...preferredWeekdays] : undefined,
-        preference,
+        preferredCategoryId: preferredCategoryId ?? undefined,
         pinnedShiftTemplateIds: pinnedShiftTemplateIds.size > 0 ? [...pinnedShiftTemplateIds] : undefined,
-        maxWeeklyShiftsByPreference:
-          Object.keys(maxWeeklyShiftsByPreference).length > 0 ? maxWeeklyShiftsByPreference : undefined,
+        maxWeeklyShiftsByCategory:
+          Object.keys(maxWeeklyShiftsByCategory).length > 0 ? maxWeeklyShiftsByCategory : undefined,
         priority,
         active: true,
       });
@@ -222,19 +220,23 @@ export default function NewEmployeeScreen() {
 
       <Text style={styles.label}>{strings.employees.maxWeeklyShiftsByPreference}</Text>
       <Text style={styles.hint}>{strings.employees.maxWeeklyShiftsByPreferenceHint}</Text>
-      <View style={styles.preferenceLimitsRow}>
-        {PREFERENCE_CATEGORIES.map((category) => (
-          <View key={category} style={styles.preferenceLimitField}>
-            <TextField
-              label={SHIFT_PREFERENCE_LABELS[category]}
-              value={maxByPreference[category] ?? ''}
-              onChangeText={(text) => setMaxByPreference((prev) => ({ ...prev, [category]: text }))}
-              keyboardType="numeric"
-              placeholder="Nessun limite"
-            />
-          </View>
-        ))}
-      </View>
+      {categories.length === 0 ? (
+        <Text style={styles.warning}>Nessuna fascia oraria disponibile.</Text>
+      ) : (
+        <View style={styles.preferenceLimitsRow}>
+          {categories.map((category) => (
+            <View key={category.id} style={styles.preferenceLimitField}>
+              <TextField
+                label={category.name}
+                value={maxByCategory[category.id] ?? ''}
+                onChangeText={(text) => setMaxByCategory((prev) => ({ ...prev, [category.id]: text }))}
+                keyboardType="numeric"
+                placeholder="Nessun limite"
+              />
+            </View>
+          ))}
+        </View>
+      )}
 
       <Text style={styles.label}>{strings.employees.preferredWeekdays}</Text>
       <View style={styles.chipsRow}>
@@ -250,12 +252,13 @@ export default function NewEmployeeScreen() {
 
       <Text style={styles.label}>{strings.employees.preference}</Text>
       <View style={styles.chipsRow}>
-        {PREFERENCES.map((pref) => (
+        <Chip label="Nessuna" selected={preferredCategoryId === null} onPress={() => setPreferredCategoryId(null)} />
+        {categories.map((category) => (
           <Chip
-            key={pref}
-            label={SHIFT_PREFERENCE_LABELS[pref]}
-            selected={preference === pref}
-            onPress={() => setPreference(pref)}
+            key={category.id}
+            label={category.name}
+            selected={preferredCategoryId === category.id}
+            onPress={() => setPreferredCategoryId(category.id)}
           />
         ))}
       </View>

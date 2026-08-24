@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { ScreenContainer } from '@/src/components/shared/ScreenContainer';
 import { TextField } from '@/src/components/shared/TextField';
@@ -8,6 +8,7 @@ import { Card } from '@/src/components/shared/Card';
 import { colors } from '@/src/components/shared/colors';
 import { useShiftTemplates } from '@/src/hooks/useShiftTemplates';
 import { useRoles } from '@/src/hooks/useRoles';
+import { useShiftCategories } from '@/src/hooks/useShiftCategories';
 import { shiftTemplateRepository } from '@/src/db/repositories';
 import { timeToMinutes } from '@/src/engine';
 import { confirmAction, showAlert } from '@/src/utils/alert';
@@ -22,6 +23,7 @@ function emptyGroup(): RoleRequirement {
 export default function ShiftTemplatesScreen() {
   const { shiftTemplates, reload } = useShiftTemplates();
   const { roles } = useRoles();
+  const { categories } = useShiftCategories();
   const scrollRef = useRef<ScrollView>(null);
   const formTitleRef = useRef<View>(null);
   const scrollOffsetRef = useRef(0);
@@ -31,6 +33,7 @@ export default function ShiftTemplatesScreen() {
   const [name, setName] = useState('');
   const [startTime, setStartTime] = useState('09:00');
   const [endTime, setEndTime] = useState('13:00');
+  const [categoryId, setCategoryId] = useState<string | null>(null);
   const [requirementGroups, setRequirementGroups] = useState<RoleRequirement[]>([emptyGroup()]);
   const [saving, setSaving] = useState(false);
 
@@ -39,12 +42,20 @@ export default function ShiftTemplatesScreen() {
   const [duplicating, setDuplicating] = useState(false);
 
   const roleById = new Map(roles.map((r) => [r.id, r]));
+  const categoryById = new Map(categories.map((c) => [c.id, c]));
+
+  useEffect(() => {
+    if (categoryId === null && categories.length > 0) {
+      setCategoryId(categories[0].id);
+    }
+  }, [categories, categoryId]);
 
   const resetForm = () => {
     setEditingTemplateId(null);
     setName('');
     setStartTime('09:00');
     setEndTime('13:00');
+    setCategoryId(categories[0]?.id ?? null);
     setRequirementGroups([emptyGroup()]);
   };
 
@@ -73,6 +84,7 @@ export default function ShiftTemplatesScreen() {
     setName(template.name);
     setStartTime(template.startTime);
     setEndTime(template.endTime);
+    setCategoryId(template.categoryId);
     setRequirementGroups(template.requirements.map((r) => ({ roleIds: [...r.roleIds], count: r.count })));
     // Aspetta due frame: il primo lascia commettere il nuovo render (nuovi valori nei campi),
     // il secondo garantisce che il layout sia stato ricalcolato prima di misurare la posizione.
@@ -107,6 +119,7 @@ export default function ShiftTemplatesScreen() {
 
   const handleSubmit = async () => {
     if (!name.trim()) return;
+    if (!categoryId) return;
     const requirements = requirementGroups.filter((g) => g.roleIds.length > 0 && g.count > 0);
     if (requirements.length === 0) return;
 
@@ -129,6 +142,7 @@ export default function ShiftTemplatesScreen() {
           name: name.trim(),
           startTime: normalizedStart,
           endTime: normalizedEnd,
+          categoryId,
           requirements,
         });
       } else {
@@ -137,6 +151,7 @@ export default function ShiftTemplatesScreen() {
           name: name.trim(),
           startTime: normalizedStart,
           endTime: normalizedEnd,
+          categoryId,
           requirements,
         });
       }
@@ -194,6 +209,7 @@ export default function ShiftTemplatesScreen() {
           name: template.name,
           startTime: template.startTime,
           endTime: template.endTime,
+          categoryId: template.categoryId,
           requirements: template.requirements,
         });
       }
@@ -239,6 +255,9 @@ export default function ShiftTemplatesScreen() {
                   <View style={styles.templateInfo}>
                     <Text style={styles.templateName}>
                       {template.name} · {template.startTime}-{template.endTime}
+                    </Text>
+                    <Text style={styles.templateRequirements}>
+                      Fascia: {categoryById.get(template.categoryId)?.name ?? '—'}
                     </Text>
                     <Text style={styles.templateRequirements}>
                       {template.requirements.map(requirementSummary).join(', ')}
@@ -317,6 +336,21 @@ export default function ShiftTemplatesScreen() {
         <View style={styles.timeField}>
           <TextField label={strings.shop.endTime} value={endTime} onChangeText={setEndTime} placeholder="13:00" />
         </View>
+      </View>
+
+      <Text style={styles.label}>Fascia oraria</Text>
+      {categories.length === 0 && (
+        <Text style={styles.muted}>Crea prima almeno una fascia oraria in Negozio → Fasce orarie.</Text>
+      )}
+      <View style={styles.chipsRow}>
+        {categories.map((category) => (
+          <Chip
+            key={category.id}
+            label={category.name}
+            selected={categoryId === category.id}
+            onPress={() => setCategoryId(category.id)}
+          />
+        ))}
       </View>
 
       <Text style={styles.label}>{strings.shop.requirements}</Text>

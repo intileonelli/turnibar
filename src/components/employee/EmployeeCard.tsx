@@ -1,5 +1,5 @@
 import { StyleSheet, Text, View } from 'react-native';
-import { Employee, Role, SHIFT_PREFERENCE_LABELS, WEEKDAY_LABELS_SHORT } from '@/src/models';
+import { Employee, Role, WEEKDAY_LABELS_SHORT } from '@/src/models';
 import { Card } from '@/src/components/shared/Card';
 import { Badge } from '@/src/components/shared/Badge';
 import { colors } from '@/src/components/shared/colors';
@@ -8,10 +8,11 @@ interface EmployeeCardProps {
   employee: Employee;
   role?: Role;
   secondaryRole?: Role;
+  preferredCategoryName?: string;
   onPress: () => void;
 }
 
-export function EmployeeCard({ employee, role, secondaryRole, onPress }: EmployeeCardProps) {
+export function EmployeeCard({ employee, role, secondaryRole, preferredCategoryName, onPress }: EmployeeCardProps) {
   const hoursParts: string[] = [];
   if (employee.weeklyContractHours !== undefined) hoursParts.push(`${employee.weeklyContractHours}h contrattuali`);
   if (employee.maxWeeklyHours !== undefined) hoursParts.push(`max ${employee.maxWeeklyHours}h`);
@@ -31,7 +32,7 @@ export function EmployeeCard({ employee, role, secondaryRole, onPress }: Employe
       <Text style={styles.details}>
         {hoursParts.length > 0 ? hoursParts.join(' · ') : 'Nessun limite di ore/turni/giorni'}
       </Text>
-      <Text style={styles.details}>Preferenza: {SHIFT_PREFERENCE_LABELS[employee.preference]}</Text>
+      <Text style={styles.details}>Preferenza: {preferredCategoryName ?? 'Nessuna'}</Text>
       {employee.preferredWeekdays && employee.preferredWeekdays.length > 0 && (
         <Text style={styles.details}>
           Giorni preferiti: {employee.preferredWeekdays.map((d) => WEEKDAY_LABELS_SHORT[d]).join(', ')}

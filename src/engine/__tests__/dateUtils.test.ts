@@ -1,4 +1,4 @@
-import { dateForWeekday, rangesOverlap, shiftDurationHours, shiftPreferenceCategory, timeToMinutes } from '../dateUtils';
+import { dateForWeekday, rangesOverlap, shiftDurationHours, timeToMinutes } from '../dateUtils';
 
 describe('dateForWeekday', () => {
   it('restituisce la stessa data per weekday 1 (lunedì)', () => {
@@ -7,14 +7,6 @@ describe('dateForWeekday', () => {
 
   it('somma i giorni corretti per weekday successivi', () => {
     expect(dateForWeekday('2026-08-03', 7)).toBe('2026-08-09');
-  });
-});
-
-describe('shiftPreferenceCategory', () => {
-  it('classifica correttamente mattina, pomeriggio, sera', () => {
-    expect(shiftPreferenceCategory('09:00')).toBe('mattina');
-    expect(shiftPreferenceCategory('13:00')).toBe('pomeriggio');
-    expect(shiftPreferenceCategory('17:00')).toBe('sera');
   });
 });
 

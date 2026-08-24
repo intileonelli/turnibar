@@ -1,4 +1,4 @@
-import { ShiftPreference, Weekday } from '@/src/models';
+import { Weekday } from '@/src/models';
 
 /**
  * Converte un orario in minuti dalla mezzanotte, per confronti numerici semplici. Accetta sia
@@ -25,17 +25,6 @@ export function rangesOverlap(
 
 export function shiftDurationHours(startTime: string, endTime: string): number {
   return (timeToMinutes(endTime) - timeToMinutes(startTime)) / 60;
-}
-
-/**
- * Categoria di fascia oraria di un turno, in base all'orario di inizio.
- * Soglie allineate all'esempio tipico da negozio: mattina 9-13, pomeriggio 13-17, sera 17-21.
- */
-export function shiftPreferenceCategory(startTime: string): ShiftPreference {
-  const minutes = timeToMinutes(startTime);
-  if (minutes < timeToMinutes('13:00')) return 'mattina';
-  if (minutes < timeToMinutes('17:00')) return 'pomeriggio';
-  return 'sera';
 }
 
 /** Restituisce la data "YYYY-MM-DD" del weekday indicato nella settimana che inizia lunedì weekStartDate. */

@@ -113,10 +113,4 @@ export const strings = {
     limitReachedMessage: (date: string, count: number, max: number) =>
       `Il ${date} ci sono già ${count} dipendenti in ferie su un massimo di ${max}. Rimuovi prima le ferie di un altro dipendente per aggiungerne in questo giorno.`,
   },
-  preference: {
-    mattina: 'Mattina',
-    pomeriggio: 'Pomeriggio',
-    sera: 'Sera',
-    nessuna: 'Nessuna preferenza',
-  },
 } as const;

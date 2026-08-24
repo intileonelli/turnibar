@@ -1,5 +1,5 @@
 import { ConstraintViolation, Employee, employeeRoleIds, TimeOff, Unavailability, Weekday } from '@/src/models';
-import { rangesOverlap, shiftDurationHours, shiftPreferenceCategory } from './dateUtils';
+import { rangesOverlap, shiftDurationHours } from './dateUtils';
 import { preferenceMatches } from './constraints/softConstraints';
 
 export interface AssignmentSlotInfo {
@@ -11,12 +11,15 @@ export interface AssignmentSlotInfo {
   endTime: string;
   /** Ruoli accettabili per questo requisito, in ordine di priorità. */
   roleIds: string[];
+  /** Fascia oraria (id di una ShiftCategory) del turno tipo di questo slot. */
+  categoryId: string;
 }
 
 export interface OtherAssignment {
   date: string;
   startTime: string;
   endTime: string;
+  categoryId: string;
 }
 
 export interface ValidateAssignmentInput {
@@ -113,19 +116,18 @@ export function validateAssignment(input: ValidateAssignmentInput): ConstraintVi
     }
   }
 
-  if (employee.maxWeeklyShiftsByPreference) {
-    const category = shiftPreferenceCategory(slot.startTime);
-    const limit = employee.maxWeeklyShiftsByPreference[category as keyof typeof employee.maxWeeklyShiftsByPreference];
+  if (employee.maxWeeklyShiftsByCategory) {
+    const limit = employee.maxWeeklyShiftsByCategory[slot.categoryId];
     if (limit !== undefined) {
       const otherCategoryCount = input.otherAssignmentsForEmployee.filter(
-        (a) => shiftPreferenceCategory(a.startTime) === category
+        (a) => a.categoryId === slot.categoryId
       ).length;
       if (otherCategoryCount + 1 > limit) {
         violations.push({
           ...base,
           type: 'max_preference_shifts',
           severity: 'hard',
-          message: `${employee.name} supererebbe il massimo di ${limit} turni di ${category} a settimana.`,
+          message: `${employee.name} supererebbe il massimo di ${limit} turni di questa fascia a settimana.`,
         });
       }
     }

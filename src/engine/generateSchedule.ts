@@ -20,6 +20,7 @@ function buildSlots(input: EngineInput): Slot[] {
           startTime: template.startTime,
           endTime: template.endTime,
           roleIds: requirement.roleIds,
+          categoryId: template.categoryId,
         });
       }
     }

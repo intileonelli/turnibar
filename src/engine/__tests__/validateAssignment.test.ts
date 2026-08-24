@@ -4,11 +4,13 @@ import { AssignmentSlotInfo, validateAssignment } from '../validateAssignment';
 const ROLE_COMMESSO = 'role-commesso';
 const ROLE_CASSIERE = 'role-cassiere';
 
+const CATEGORY_MATTINA = 'cat-mattina';
+const CATEGORY_SERA = 'cat-sera';
+
 function makeEmployee(overrides: Partial<Employee> & Pick<Employee, 'id' | 'name' | 'roleId'>): Employee {
   return {
     weeklyContractHours: 20,
     maxWeeklyHours: 20,
-    preference: 'nessuna',
     active: true,
     ...overrides,
   };
@@ -22,6 +24,7 @@ const SLOT: AssignmentSlotInfo = {
   startTime: '09:00',
   endTime: '13:00',
   roleIds: [ROLE_COMMESSO],
+  categoryId: CATEGORY_MATTINA,
 };
 
 describe('validateAssignment', () => {
@@ -95,7 +98,7 @@ describe('validateAssignment', () => {
     const violations = validateAssignment({
       employee: anna,
       slot: SLOT,
-      otherAssignmentsForEmployee: [{ date: '2026-08-04', startTime: '09:00', endTime: '13:00' }],
+      otherAssignmentsForEmployee: [{ date: '2026-08-04', startTime: '09:00', endTime: '13:00', categoryId: CATEGORY_MATTINA }],
       unavailabilities: [],
       timeOff: [],
       allowMultipleShiftsPerDay: true,
@@ -116,7 +119,7 @@ describe('validateAssignment', () => {
     const violations = validateAssignment({
       employee: anna,
       slot: SLOT,
-      otherAssignmentsForEmployee: [{ date: '2026-08-04', startTime: '09:00', endTime: '13:00' }],
+      otherAssignmentsForEmployee: [{ date: '2026-08-04', startTime: '09:00', endTime: '13:00', categoryId: CATEGORY_MATTINA }],
       unavailabilities: [],
       timeOff: [],
       allowMultipleShiftsPerDay: true,
@@ -131,7 +134,7 @@ describe('validateAssignment', () => {
     const violations = validateAssignment({
       employee: anna,
       slot: SLOT,
-      otherAssignmentsForEmployee: [{ date: '2026-08-03', startTime: '12:00', endTime: '16:00' }],
+      otherAssignmentsForEmployee: [{ date: '2026-08-03', startTime: '12:00', endTime: '16:00', categoryId: CATEGORY_MATTINA }],
       unavailabilities: [],
       timeOff: [],
       allowMultipleShiftsPerDay: true,
@@ -141,7 +144,7 @@ describe('validateAssignment', () => {
   });
 
   it('segnala come violazione soft una preferenza di fascia oraria non rispettata', () => {
-    const anna = makeEmployee({ id: 'anna', name: 'Anna', roleId: ROLE_COMMESSO, preference: 'sera' });
+    const anna = makeEmployee({ id: 'anna', name: 'Anna', roleId: ROLE_COMMESSO, preferredCategoryId: CATEGORY_SERA });
 
     const violations = validateAssignment({
       employee: anna,
@@ -198,8 +201,8 @@ describe('validateAssignment', () => {
       employee: anna,
       slot: SLOT,
       otherAssignmentsForEmployee: [
-        { date: '2026-08-04', startTime: '09:00', endTime: '18:00' },
-        { date: '2026-08-05', startTime: '09:00', endTime: '18:00' },
+        { date: '2026-08-04', startTime: '09:00', endTime: '18:00', categoryId: CATEGORY_MATTINA },
+        { date: '2026-08-05', startTime: '09:00', endTime: '18:00', categoryId: CATEGORY_MATTINA },
       ],
       unavailabilities: [],
       timeOff: [],
@@ -215,7 +218,7 @@ describe('validateAssignment', () => {
     const violations = validateAssignment({
       employee: anna,
       slot: SLOT, // 2026-08-03
-      otherAssignmentsForEmployee: [{ date: '2026-08-04', startTime: '09:00', endTime: '13:00' }],
+      otherAssignmentsForEmployee: [{ date: '2026-08-04', startTime: '09:00', endTime: '13:00', categoryId: CATEGORY_MATTINA }],
       unavailabilities: [],
       timeOff: [],
       allowMultipleShiftsPerDay: true,
@@ -230,7 +233,7 @@ describe('validateAssignment', () => {
     const violations = validateAssignment({
       employee: anna,
       slot: SLOT, // 2026-08-03
-      otherAssignmentsForEmployee: [{ date: '2026-08-03', startTime: '14:00', endTime: '18:00' }],
+      otherAssignmentsForEmployee: [{ date: '2026-08-03', startTime: '14:00', endTime: '18:00', categoryId: CATEGORY_MATTINA }],
       unavailabilities: [],
       timeOff: [],
       allowMultipleShiftsPerDay: true,
@@ -264,13 +267,13 @@ describe('validateAssignment', () => {
       id: 'anna',
       name: 'Anna',
       roleId: ROLE_COMMESSO,
-      maxWeeklyShiftsByPreference: { mattina: 1 },
+      maxWeeklyShiftsByCategory: { [CATEGORY_MATTINA]: 1 },
     });
 
     const violations = validateAssignment({
       employee: anna,
       slot: SLOT, // mattina (09:00)
-      otherAssignmentsForEmployee: [{ date: '2026-08-04', startTime: '09:00', endTime: '13:00' }],
+      otherAssignmentsForEmployee: [{ date: '2026-08-04', startTime: '09:00', endTime: '13:00', categoryId: CATEGORY_MATTINA }],
       unavailabilities: [],
       timeOff: [],
       allowMultipleShiftsPerDay: true,
@@ -284,13 +287,13 @@ describe('validateAssignment', () => {
       id: 'anna',
       name: 'Anna',
       roleId: ROLE_COMMESSO,
-      maxWeeklyShiftsByPreference: { sera: 1 },
+      maxWeeklyShiftsByCategory: { [CATEGORY_SERA]: 1 },
     });
 
     const violations = validateAssignment({
       employee: anna,
       slot: SLOT, // mattina (09:00), il limite impostato è per la sera
-      otherAssignmentsForEmployee: [{ date: '2026-08-04', startTime: '09:00', endTime: '13:00' }],
+      otherAssignmentsForEmployee: [{ date: '2026-08-04', startTime: '09:00', endTime: '13:00', categoryId: CATEGORY_MATTINA }],
       unavailabilities: [],
       timeOff: [],
       allowMultipleShiftsPerDay: true,

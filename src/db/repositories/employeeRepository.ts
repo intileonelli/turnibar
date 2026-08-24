@@ -1,5 +1,5 @@
 import { supabase } from '@/src/lib/supabase';
-import { Employee, EmployeePriority, ShiftPreference, Weekday } from '@/src/models';
+import { Employee, EmployeePriority, Weekday } from '@/src/models';
 
 interface EmployeeRow {
   id: string;
@@ -11,9 +11,9 @@ interface EmployeeRow {
   max_weekly_shifts: number | null;
   max_weekly_days: number | null;
   preferred_weekdays: number[] | null;
-  preference: ShiftPreference;
+  preferred_category_id: string | null;
   pinned_shift_template_ids: string[] | null;
-  max_weekly_shifts_by_preference: Employee['maxWeeklyShiftsByPreference'] | null;
+  max_weekly_shifts_by_preference: Employee['maxWeeklyShiftsByCategory'] | null;
   active: boolean;
   user_id: string | null;
   priority: EmployeePriority | null;
@@ -30,11 +30,11 @@ function mapRow(row: EmployeeRow): Employee {
     maxWeeklyShifts: row.max_weekly_shifts ?? undefined,
     maxWeeklyDays: row.max_weekly_days ?? undefined,
     preferredWeekdays: row.preferred_weekdays?.length ? (row.preferred_weekdays as Weekday[]) : undefined,
-    preference: row.preference,
+    preferredCategoryId: row.preferred_category_id ?? undefined,
     pinnedShiftTemplateIds: row.pinned_shift_template_ids?.length
       ? row.pinned_shift_template_ids
       : undefined,
-    maxWeeklyShiftsByPreference: row.max_weekly_shifts_by_preference ?? undefined,
+    maxWeeklyShiftsByCategory: row.max_weekly_shifts_by_preference ?? undefined,
     active: row.active,
     linkedUserId: row.user_id ?? undefined,
     priority: row.priority ?? undefined,
@@ -51,13 +51,13 @@ function toRow(input: Omit<Employee, 'id'>) {
     max_weekly_shifts: input.maxWeeklyShifts ?? null,
     max_weekly_days: input.maxWeeklyDays ?? null,
     preferred_weekdays: input.preferredWeekdays?.length ? input.preferredWeekdays : null,
-    preference: input.preference,
+    preferred_category_id: input.preferredCategoryId ?? null,
     pinned_shift_template_ids: input.pinnedShiftTemplateIds?.length
       ? input.pinnedShiftTemplateIds
       : null,
     max_weekly_shifts_by_preference:
-      input.maxWeeklyShiftsByPreference && Object.keys(input.maxWeeklyShiftsByPreference).length
-        ? input.maxWeeklyShiftsByPreference
+      input.maxWeeklyShiftsByCategory && Object.keys(input.maxWeeklyShiftsByCategory).length
+        ? input.maxWeeklyShiftsByCategory
         : null,
     active: input.active,
     user_id: input.linkedUserId ?? null,

@@ -6,13 +6,16 @@ import { colors } from '@/src/components/shared/colors';
 import { EmployeeCard } from '@/src/components/employee/EmployeeCard';
 import { useEmployees } from '@/src/hooks/useEmployees';
 import { useRoles } from '@/src/hooks/useRoles';
+import { useShiftCategories } from '@/src/hooks/useShiftCategories';
 import { strings } from '@/src/i18n/strings';
 
 export default function EmployeeListScreen() {
   const router = useRouter();
   const { employees, loading } = useEmployees({ includeInactive: true });
   const { roles } = useRoles();
+  const { categories } = useShiftCategories();
   const roleById = new Map(roles.map((r) => [r.id, r]));
+  const categoryById = new Map(categories.map((c) => [c.id, c]));
 
   return (
     <ScreenContainer scroll={false}>
@@ -32,6 +35,7 @@ export default function EmployeeListScreen() {
             employee={item}
             role={roleById.get(item.roleId)}
             secondaryRole={item.secondaryRoleId ? roleById.get(item.secondaryRoleId) : undefined}
+            preferredCategoryName={item.preferredCategoryId ? categoryById.get(item.preferredCategoryId)?.name : undefined}
             onPress={() => router.push(`/dipendenti/${item.id}`)}
           />
         )}

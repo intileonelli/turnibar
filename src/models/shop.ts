@@ -31,6 +31,8 @@ export interface ShiftTemplate {
   /** Orario in formato "HH:mm". */
   endTime: string;
   requirements: RoleRequirement[];
+  /** Fascia oraria (id di una ShiftCategory dell'azienda) a cui appartiene questo turno. */
+  categoryId: string;
 }
 
 /** Impostazioni generali del negozio. */

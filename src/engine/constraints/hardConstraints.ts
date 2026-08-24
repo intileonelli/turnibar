@@ -1,5 +1,5 @@
 import { Employee, employeeRoleIds } from '@/src/models';
-import { rangesOverlap, shiftDurationHours, shiftPreferenceCategory } from '../dateUtils';
+import { rangesOverlap, shiftDurationHours } from '../dateUtils';
 import { SolverContext, SolverState } from '../state';
 import { Slot } from '../types';
 
@@ -63,10 +63,9 @@ export function findHardConstraintFailure(
     }
   }
 
-  if (employee.maxWeeklyShiftsByPreference) {
-    const category = shiftPreferenceCategory(slot.startTime);
-    const limit = employee.maxWeeklyShiftsByPreference[category as keyof typeof employee.maxWeeklyShiftsByPreference];
-    if (limit !== undefined && state.getCategoryShiftCount(employee.id, category) + 1 > limit) {
+  if (employee.maxWeeklyShiftsByCategory) {
+    const limit = employee.maxWeeklyShiftsByCategory[slot.categoryId];
+    if (limit !== undefined && state.getCategoryShiftCount(employee.id, slot.categoryId) + 1 > limit) {
       return 'max_preference_shifts';
     }
   }

@@ -1,5 +1,6 @@
 import { getDb } from '@/src/db/local/client';
-import { RoleRequirement, ShiftTemplate, Weekday } from '@/src/models';
+import { RoleRequirement, Weekday } from '@/src/models';
+import { LegacyShiftTemplate } from '@/src/db/local/legacyModels';
 import { generateId } from '@/src/utils/id';
 
 interface ShiftTemplateRow {
@@ -62,12 +63,12 @@ async function insertRequirements(
   }
 }
 
-export async function listShiftTemplates(): Promise<ShiftTemplate[]> {
+export async function listShiftTemplates(): Promise<LegacyShiftTemplate[]> {
   const db = await getDb();
   const rows = await db.getAllAsync<ShiftTemplateRow>(
     'SELECT * FROM shift_templates ORDER BY weekday, start_time;'
   );
-  const templates: ShiftTemplate[] = [];
+  const templates: LegacyShiftTemplate[] = [];
   for (const row of rows) {
     const requirements = await loadRequirements(db, row.id);
     templates.push({
@@ -82,12 +83,12 @@ export async function listShiftTemplates(): Promise<ShiftTemplate[]> {
   return templates;
 }
 
-export async function listShiftTemplatesForWeekday(weekday: Weekday): Promise<ShiftTemplate[]> {
+export async function listShiftTemplatesForWeekday(weekday: Weekday): Promise<LegacyShiftTemplate[]> {
   const all = await listShiftTemplates();
   return all.filter((t) => t.weekday === weekday);
 }
 
-export async function createShiftTemplate(input: Omit<ShiftTemplate, 'id'>): Promise<ShiftTemplate> {
+export async function createShiftTemplate(input: Omit<LegacyShiftTemplate, 'id'>): Promise<LegacyShiftTemplate> {
   const db = await getDb();
   const id = generateId();
   await db.withTransactionAsync(async () => {
@@ -100,7 +101,7 @@ export async function createShiftTemplate(input: Omit<ShiftTemplate, 'id'>): Pro
   return { id, ...input };
 }
 
-export async function updateShiftTemplate(template: ShiftTemplate): Promise<void> {
+export async function updateShiftTemplate(template: LegacyShiftTemplate): Promise<void> {
   const db = await getDb();
   await db.withTransactionAsync(async () => {
     await db.runAsync(

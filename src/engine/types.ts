@@ -50,4 +50,6 @@ export interface Slot {
   endTime: string;
   /** Ruoli accettabili per questo slot, in ordine di priorità (il primo è quello preferito). */
   roleIds: string[];
+  /** Fascia oraria (id di una ShiftCategory) del turno tipo di questo slot. */
+  categoryId: string;
 }

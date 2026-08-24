@@ -62,6 +62,9 @@ export default function ShopScreen() {
           />
         </View>
         <View style={styles.navButton}>
+          <Button label="Fasce orarie" variant="secondary" onPress={() => router.push('/negozio/fasce-orarie')} />
+        </View>
+        <View style={styles.navButton}>
           <Button label="Accessi dipendenti" variant="secondary" onPress={() => router.push('/negozio/accessi')} />
         </View>
       </View>

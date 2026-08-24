@@ -6,11 +6,14 @@ const ROLE_COMMESSO: Role = { id: 'role-commesso', name: 'Commesso', color: '#00
 const ROLE_CASSIERE: Role = { id: 'role-cassiere', name: 'Cassiere', color: '#111' };
 const ROLES = [ROLE_COMMESSO, ROLE_CASSIERE];
 
+const CATEGORY_MATTINA = 'cat-mattina';
+const CATEGORY_POMERIGGIO = 'cat-pomeriggio';
+const CATEGORY_SERA = 'cat-sera';
+
 function makeEmployee(overrides: Partial<Employee> & Pick<Employee, 'id' | 'name' | 'roleId'>): Employee {
   return {
     weeklyContractHours: 20,
     maxWeeklyHours: 20,
-    preference: 'nessuna',
     active: true,
     ...overrides,
   };
@@ -31,6 +34,7 @@ describe('generateSchedule', () => {
         name: 'Mattina',
         startTime: '09:00',
         endTime: '13:00',
+        categoryId: CATEGORY_MATTINA,
         requirements: [{ roleIds: [ROLE_COMMESSO.id], count: 1 }],
       },
       {
@@ -39,6 +43,7 @@ describe('generateSchedule', () => {
         name: 'Pomeriggio',
         startTime: '13:00',
         endTime: '17:00',
+        categoryId: CATEGORY_MATTINA,
         requirements: [{ roleIds: [ROLE_CASSIERE.id], count: 1 }],
       },
     ];
@@ -76,6 +81,7 @@ describe('generateSchedule', () => {
         name: 'Mattina',
         startTime: '09:00',
         endTime: '13:00',
+        categoryId: CATEGORY_MATTINA,
         requirements: [{ roleIds: [ROLE_COMMESSO.id], count: 1 }],
       },
     ];
@@ -108,6 +114,7 @@ describe('generateSchedule', () => {
         name: 'Mattina',
         startTime: '09:00',
         endTime: '13:00',
+        categoryId: CATEGORY_MATTINA,
         requirements: [{ roleIds: [ROLE_COMMESSO.id], count: 1 }],
       },
     ];
@@ -141,6 +148,7 @@ describe('generateSchedule', () => {
         name: 'Cassa',
         startTime: '09:00',
         endTime: '13:00',
+        categoryId: CATEGORY_MATTINA,
         requirements: [{ roleIds: [ROLE_CASSIERE.id], count: 2 }],
       },
     ];
@@ -187,6 +195,7 @@ describe('generateSchedule', () => {
       name: 'Mattina',
       startTime: '09:00',
       endTime: '13:00',
+      categoryId: CATEGORY_MATTINA,
       requirements: [{ roleIds: [ROLE_COMMESSO.id], count: 1 }],
     }));
 
@@ -229,6 +238,7 @@ describe('generateSchedule', () => {
       name: 'Mattina',
       startTime: '09:00',
       endTime: '13:00',
+      categoryId: CATEGORY_MATTINA,
       requirements: [{ roleIds: [ROLE_COMMESSO.id], count: 1 }],
     }));
 
@@ -264,6 +274,7 @@ describe('generateSchedule', () => {
         name: 'Turno A',
         startTime: '09:00',
         endTime: '14:00',
+        categoryId: CATEGORY_MATTINA,
         requirements: [{ roleIds: [ROLE_COMMESSO.id], count: 1 }],
       },
       {
@@ -272,6 +283,7 @@ describe('generateSchedule', () => {
         name: 'Turno B',
         startTime: '13:00',
         endTime: '17:00',
+        categoryId: CATEGORY_MATTINA,
         requirements: [{ roleIds: [ROLE_COMMESSO.id], count: 1 }],
       },
     ];
@@ -298,13 +310,13 @@ describe('generateSchedule', () => {
       id: 'anna',
       name: 'Anna',
       roleId: ROLE_COMMESSO.id,
-      preference: 'sera',
+      preferredCategoryId: CATEGORY_SERA,
     });
     const bruno = makeEmployee({
       id: 'bruno',
       name: 'Bruno',
       roleId: ROLE_COMMESSO.id,
-      preference: 'mattina',
+      preferredCategoryId: CATEGORY_MATTINA,
     });
 
     const shiftTemplates: ShiftTemplate[] = [
@@ -314,6 +326,7 @@ describe('generateSchedule', () => {
         name: 'Mattina',
         startTime: '09:00',
         endTime: '13:00',
+        categoryId: CATEGORY_MATTINA,
         requirements: [{ roleIds: [ROLE_COMMESSO.id], count: 1 }],
       },
     ];
@@ -356,6 +369,7 @@ describe('generateSchedule', () => {
       name: 'Mattina',
       startTime: '09:00',
       endTime: '13:00',
+      categoryId: CATEGORY_MATTINA,
       requirements: [{ roleIds: [ROLE_COMMESSO.id], count: 1 }],
     }));
 
@@ -393,6 +407,7 @@ describe('generateSchedule', () => {
         name: 'Cucina',
         startTime: '09:00',
         endTime: '13:00',
+        categoryId: CATEGORY_MATTINA,
         requirements: [{ roleIds: [ROLE_CUOCA, ROLE_BARISTA], count: 1 }],
       },
     ];
@@ -443,6 +458,7 @@ describe('generateSchedule', () => {
         name: 'Mattina',
         startTime: '09:00',
         endTime: '13:00',
+        categoryId: CATEGORY_MATTINA,
         requirements: [{ roleIds: [ROLE_COMMESSO.id], count: 1 }],
       },
     ];
@@ -480,6 +496,7 @@ describe('generateSchedule', () => {
         name: 'Mattina',
         startTime: '09:00',
         endTime: '13:00',
+        categoryId: CATEGORY_MATTINA,
         requirements: [{ roleIds: [ROLE_COMMESSO.id], count: 1 }],
       },
       {
@@ -488,6 +505,7 @@ describe('generateSchedule', () => {
         name: 'Mattina',
         startTime: '09:00',
         endTime: '13:00',
+        categoryId: CATEGORY_MATTINA,
         requirements: [{ roleIds: [ROLE_COMMESSO.id], count: 1 }],
       },
     ];
@@ -529,6 +547,7 @@ describe('generateSchedule', () => {
         name: 'Cucina',
         startTime: '09:00',
         endTime: '13:00',
+        categoryId: CATEGORY_MATTINA,
         requirements: [{ roleIds: [ROLE_CUOCA], count: 1 }],
       },
     ];
@@ -566,6 +585,7 @@ describe('generateSchedule', () => {
         name: 'Mattina',
         startTime: '09:00',
         endTime: '13:00',
+        categoryId: CATEGORY_MATTINA,
         requirements: [{ roleIds: [ROLE_COMMESSO.id], count: 1 }],
       },
     ];
@@ -593,6 +613,7 @@ describe('generateSchedule', () => {
         name: 'Sera 1',
         startTime: '18:00',
         endTime: '22:00',
+        categoryId: CATEGORY_MATTINA,
         requirements: [{ roleIds: [ROLE_COMMESSO.id], count: 1 }],
       },
     ];
@@ -628,6 +649,7 @@ describe('generateSchedule', () => {
         name: 'Sera 1',
         startTime: '18:00',
         endTime: '22:00',
+        categoryId: CATEGORY_MATTINA,
         requirements: [{ roleIds: [ROLE_COMMESSO.id], count: 1 }],
       },
     ];
@@ -665,6 +687,7 @@ describe('generateSchedule', () => {
         name: 'Mattina',
         startTime: '09:00',
         endTime: '13:00',
+        categoryId: CATEGORY_MATTINA,
         requirements: [{ roleIds: [ROLE_COMMESSO.id], count: 1 }],
       },
       {
@@ -673,6 +696,7 @@ describe('generateSchedule', () => {
         name: 'Sera',
         startTime: '18:00',
         endTime: '22:00',
+        categoryId: CATEGORY_MATTINA,
         requirements: [{ roleIds: [ROLE_COMMESSO.id], count: 1 }],
       },
     ];
@@ -710,7 +734,7 @@ describe('generateSchedule', () => {
       id: 'anna',
       name: 'Anna',
       roleId: ROLE_COMMESSO.id,
-      maxWeeklyShiftsByPreference: { sera: 1 },
+      maxWeeklyShiftsByCategory: { [CATEGORY_SERA]: 1 },
     });
     const bruno = makeEmployee({ id: 'bruno', name: 'Bruno', roleId: ROLE_COMMESSO.id });
 
@@ -720,6 +744,7 @@ describe('generateSchedule', () => {
       name: 'Sera',
       startTime: '18:00',
       endTime: '22:00',
+      categoryId: CATEGORY_SERA,
       requirements: [{ roleIds: [ROLE_COMMESSO.id], count: 1 }],
     }));
 
@@ -761,6 +786,7 @@ describe('generateSchedule', () => {
         name: 'Mattina',
         startTime: '09:00',
         endTime: '13:00',
+        categoryId: CATEGORY_MATTINA,
         requirements: [{ roleIds: [ROLE_COMMESSO.id], count: 1 }],
       },
     ];
@@ -805,6 +831,7 @@ describe('generateSchedule', () => {
         name: 'Apertura',
         startTime: '06:00',
         endTime: '12:00',
+        categoryId: CATEGORY_MATTINA,
         requirements: [{ roleIds: [ROLE_COMMESSO.id], count: 1 }],
       },
       {
@@ -813,6 +840,7 @@ describe('generateSchedule', () => {
         name: 'Sera',
         startTime: '18:00',
         endTime: '22:00',
+        categoryId: CATEGORY_MATTINA,
         requirements: [{ roleIds: [ROLE_COMMESSO.id], count: 1 }],
       },
     ];
@@ -855,6 +883,7 @@ describe('generateSchedule', () => {
         name: 'Sera',
         startTime: '18:00',
         endTime: '22:00',
+        categoryId: CATEGORY_SERA,
         requirements: [{ roleIds: [ROLE_CASSIERE.id, ROLE_COMMESSO.id], count: 1 }],
       },
     ];
@@ -864,14 +893,14 @@ describe('generateSchedule', () => {
       id: 'anna',
       name: 'Anna',
       roleId: ROLE_COMMESSO.id,
-      preference: 'sera',
+      preferredCategoryId: CATEGORY_SERA,
     });
     // Bruno: ruolo principale "cassiere" (prima scelta, idoneità migliore), ma preferisce la mattina.
     const bruno = makeEmployee({
       id: 'bruno',
       name: 'Bruno',
       roleId: ROLE_CASSIERE.id,
-      preference: 'mattina',
+      preferredCategoryId: CATEGORY_MATTINA,
     });
 
     const result = generateSchedule(

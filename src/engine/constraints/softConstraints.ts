@@ -1,11 +1,10 @@
 import { Employee } from '@/src/models';
-import { shiftPreferenceCategory } from '../dateUtils';
 import { SolverState } from '../state';
 import { Slot } from '../types';
 
-export function preferenceMatches(employee: Employee, slot: Pick<Slot, 'startTime'>): boolean {
-  if (employee.preference === 'nessuna') return true;
-  return employee.preference === shiftPreferenceCategory(slot.startTime);
+export function preferenceMatches(employee: Employee, slot: Pick<Slot, 'categoryId'>): boolean {
+  if (!employee.preferredCategoryId) return true;
+  return employee.preferredCategoryId === slot.categoryId;
 }
 
 /** Indice del ruolo dello slot coperto dal dipendente (principale o secondario) e se è avvenuto tramite il ruolo secondario. */
@@ -35,8 +34,8 @@ function rankCandidate(employee: Employee, slot: Slot, state: SolverState): numb
   const pinned = employee.pinnedShiftTemplateIds?.includes(slot.shiftTemplateId) ? 1 : 0;
 
   let preference = 0;
-  if (employee.preference !== 'nessuna') {
-    preference = shiftPreferenceCategory(slot.startTime) === employee.preference ? 1 : -1;
+  if (employee.preferredCategoryId) {
+    preference = employee.preferredCategoryId === slot.categoryId ? 1 : -1;
   }
 
   const { priorityIndex, usedSecondary } = matchRolePriority(employee, slot);

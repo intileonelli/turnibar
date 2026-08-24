@@ -1,8 +1,18 @@
 import { getDb as getLocalDb } from '@/src/db/local/client';
 import * as localRepos from '@/src/db/local/repositories';
+import { LegacyShiftPreference } from '@/src/db/local/legacyModels';
 import * as cloudRepos from '@/src/db/repositories';
+import { timeToMinutes } from '@/src/engine';
 
 type Log = (line: string) => void;
+
+/** Nel vecchio sistema la fascia era indovinata dall'orario: stessa soglia usata nel backfill del database, come punto di partenza da correggere poi con calma. */
+function guessCategoryName(startTime: string): 'Mattina' | 'Pomeriggio' | 'Sera' {
+  const minutes = timeToMinutes(startTime);
+  if (minutes < timeToMinutes('13:00')) return 'Mattina';
+  if (minutes < timeToMinutes('17:00')) return 'Pomeriggio';
+  return 'Sera';
+}
 
 /**
  * Copia una tantum i dati inseriti in locale (prima del passaggio a Supabase) nel database
@@ -15,6 +25,18 @@ export async function migrateLocalDataToCloud(log: Log): Promise<void> {
   const roleIdMap = new Map<string, string>();
   const templateIdMap = new Map<string, string>();
   const employeeIdMap = new Map<string, string>();
+
+  log('Lettura fasce orarie...');
+  const cloudCategories = await cloudRepos.shiftCategoryRepository.listShiftCategories();
+  const categoryIdByName = new Map(cloudCategories.map((c) => [c.name, c.id]));
+  const fallbackCategoryId = cloudCategories[0]?.id;
+  const categoryIdForTime = (startTime: string): string | undefined =>
+    categoryIdByName.get(guessCategoryName(startTime)) ?? fallbackCategoryId;
+  const categoryIdForLegacyPreference = (preference: LegacyShiftPreference): string | undefined => {
+    if (preference === 'nessuna') return undefined;
+    const name = preference === 'mattina' ? 'Mattina' : preference === 'pomeriggio' ? 'Pomeriggio' : 'Sera';
+    return categoryIdByName.get(name);
+  };
 
   log('Lettura ruoli locali...');
   const localRoles = await localRepos.roleRepository.listRoles();
@@ -34,16 +56,23 @@ export async function migrateLocalDataToCloud(log: Log): Promise<void> {
       }))
       .filter((req) => req.roleIds.length > 0);
 
+    const categoryId = categoryIdForTime(template.startTime);
+    if (!categoryId) {
+      log(`⚠ Turno tipo "${template.name}" saltato: nessuna fascia oraria disponibile sul cloud.`);
+      continue;
+    }
+
     const created = await cloudRepos.shiftTemplateRepository.createShiftTemplate({
       weekday: template.weekday,
       name: template.name,
       startTime: template.startTime,
       endTime: template.endTime,
+      categoryId,
       requirements: remappedRequirements,
     });
     templateIdMap.set(template.id, created.id);
   }
-  log(`Turni tipo copiati: ${localTemplates.length}`);
+  log(`Turni tipo copiati: ${templateIdMap.size}`);
 
   log('Lettura dipendenti locali...');
   const localEmployees = await localRepos.employeeRepository.listEmployees({ includeInactive: true });
@@ -53,6 +82,15 @@ export async function migrateLocalDataToCloud(log: Log): Promise<void> {
       log(`⚠ Dipendente "${employee.name}" saltato: ruolo non trovato tra quelli copiati.`);
       continue;
     }
+
+    const maxWeeklyShiftsByCategory: Record<string, number> = {};
+    if (employee.maxWeeklyShiftsByPreference) {
+      for (const [pref, value] of Object.entries(employee.maxWeeklyShiftsByPreference)) {
+        const categoryId = categoryIdForLegacyPreference(pref as LegacyShiftPreference);
+        if (categoryId && value !== undefined) maxWeeklyShiftsByCategory[categoryId] = value;
+      }
+    }
+
     const created = await cloudRepos.employeeRepository.createEmployee({
       name: employee.name,
       roleId: newRoleId,
@@ -62,11 +100,12 @@ export async function migrateLocalDataToCloud(log: Log): Promise<void> {
       maxWeeklyShifts: employee.maxWeeklyShifts,
       maxWeeklyDays: employee.maxWeeklyDays,
       preferredWeekdays: employee.preferredWeekdays,
-      preference: employee.preference,
+      preferredCategoryId: categoryIdForLegacyPreference(employee.preference),
       pinnedShiftTemplateIds: employee.pinnedShiftTemplateIds
         ?.map((t) => templateIdMap.get(t))
         .filter((t): t is string => !!t),
-      maxWeeklyShiftsByPreference: employee.maxWeeklyShiftsByPreference,
+      maxWeeklyShiftsByCategory:
+        Object.keys(maxWeeklyShiftsByCategory).length > 0 ? maxWeeklyShiftsByCategory : undefined,
       active: employee.active,
     });
     employeeIdMap.set(employee.id, created.id);

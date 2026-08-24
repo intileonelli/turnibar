@@ -13,6 +13,7 @@ export default function NegozioLayout() {
       <Stack.Screen name="index" options={{ title: 'Negozio' }} />
       <Stack.Screen name="ruoli" options={{ title: 'Ruoli' }} />
       <Stack.Screen name="turni-tipo" options={{ title: 'Turni tipo' }} />
+      <Stack.Screen name="fasce-orarie" options={{ title: 'Fasce orarie' }} />
     </Stack>
   );
 }

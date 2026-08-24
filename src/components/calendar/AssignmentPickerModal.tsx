@@ -89,7 +89,12 @@ export function AssignmentPickerModal({
                 .filter((a) => a.employeeId === item.id && a.id !== currentAssignmentId)
                 .map((a) => {
                   const t = shiftTemplates.find((st) => st.id === a.shiftTemplateId);
-                  return { date: a.date, startTime: t?.startTime ?? '00:00', endTime: t?.endTime ?? '00:00' };
+                  return {
+                    date: a.date,
+                    startTime: t?.startTime ?? '00:00',
+                    endTime: t?.endTime ?? '00:00',
+                    categoryId: t?.categoryId ?? '',
+                  };
                 });
 
               const violations = validateAssignment({
@@ -102,6 +107,7 @@ export function AssignmentPickerModal({
                   startTime: template.startTime,
                   endTime: template.endTime,
                   roleIds,
+                  categoryId: template.categoryId,
                 },
                 otherAssignmentsForEmployee: otherAssignments,
                 unavailabilities,

@@ -1,5 +1,4 @@
 import { Employee, ShiftTemplate, TimeOff, Unavailability, Weekday } from '@/src/models';
-import { shiftPreferenceCategory } from './dateUtils';
 import { Slot } from './types';
 
 /** Dati precalcolati dall'input, immutabili durante la risoluzione. */
@@ -69,7 +68,7 @@ interface TimeRange {
 export class SolverState {
   hoursByEmployee = new Map<string, number>();
   shiftsByEmployee = new Map<string, number>();
-  /** Turni per dipendente e fascia oraria (mattina/pomeriggio/sera), chiave `${employeeId}|${category}`. */
+  /** Turni per dipendente e fascia oraria, chiave `${employeeId}|${categoryId}`. */
   shiftsByEmployeeCategory = new Map<string, number>();
   rangesByEmployeeDate = new Map<string, Map<string, TimeRange[]>>();
   assignmentBySlotId = new Map<string, string>();
@@ -105,9 +104,11 @@ export class SolverState {
     this.hoursByEmployee.set(employeeId, this.getHours(employeeId) + durationHours);
     this.shiftsByEmployee.set(employeeId, this.getShiftCount(employeeId) + 1);
 
-    const category = shiftPreferenceCategory(slot.startTime);
-    const categoryKey = `${employeeId}|${category}`;
-    this.shiftsByEmployeeCategory.set(categoryKey, this.getCategoryShiftCount(employeeId, category) + 1);
+    const categoryKey = `${employeeId}|${slot.categoryId}`;
+    this.shiftsByEmployeeCategory.set(
+      categoryKey,
+      this.getCategoryShiftCount(employeeId, slot.categoryId) + 1
+    );
 
     const byDate = this.rangesByEmployeeDate.get(employeeId) ?? new Map<string, TimeRange[]>();
     const ranges = byDate.get(slot.date) ?? [];
@@ -121,9 +122,11 @@ export class SolverState {
     this.hoursByEmployee.set(employeeId, this.getHours(employeeId) - durationHours);
     this.shiftsByEmployee.set(employeeId, this.getShiftCount(employeeId) - 1);
 
-    const category = shiftPreferenceCategory(slot.startTime);
-    const categoryKey = `${employeeId}|${category}`;
-    this.shiftsByEmployeeCategory.set(categoryKey, this.getCategoryShiftCount(employeeId, category) - 1);
+    const categoryKey = `${employeeId}|${slot.categoryId}`;
+    this.shiftsByEmployeeCategory.set(
+      categoryKey,
+      this.getCategoryShiftCount(employeeId, slot.categoryId) - 1
+    );
 
     const ranges = this.rangesByEmployeeDate.get(employeeId)?.get(slot.date);
     if (ranges) {

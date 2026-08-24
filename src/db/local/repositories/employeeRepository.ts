@@ -1,5 +1,6 @@
 import { getDb } from '@/src/db/local/client';
-import { Employee, ShiftPreference, Weekday } from '@/src/models';
+import { LegacyEmployee, LegacyShiftPreference } from '@/src/db/local/legacyModels';
+import { Weekday } from '@/src/models';
 import { generateId } from '@/src/utils/id';
 
 interface EmployeeRow {
@@ -12,13 +13,13 @@ interface EmployeeRow {
   max_weekly_shifts: number | null;
   max_weekly_days: number | null;
   preferred_weekdays: string | null;
-  preference: ShiftPreference;
+  preference: LegacyShiftPreference;
   pinned_shift_template_ids: string | null;
   max_weekly_shifts_by_preference: string | null;
   active: number;
 }
 
-function mapRow(row: EmployeeRow): Employee {
+function mapRow(row: EmployeeRow): LegacyEmployee {
   return {
     id: row.id,
     name: row.name,
@@ -42,7 +43,7 @@ function mapRow(row: EmployeeRow): Employee {
   };
 }
 
-export async function listEmployees(options?: { includeInactive?: boolean }): Promise<Employee[]> {
+export async function listEmployees(options?: { includeInactive?: boolean }): Promise<LegacyEmployee[]> {
   const db = await getDb();
   const rows = options?.includeInactive
     ? await db.getAllAsync<EmployeeRow>('SELECT * FROM employees ORDER BY name;')
@@ -52,13 +53,13 @@ export async function listEmployees(options?: { includeInactive?: boolean }): Pr
   return rows.map(mapRow);
 }
 
-export async function getEmployee(id: string): Promise<Employee | null> {
+export async function getEmployee(id: string): Promise<LegacyEmployee | null> {
   const db = await getDb();
   const row = await db.getFirstAsync<EmployeeRow>('SELECT * FROM employees WHERE id = ?;', [id]);
   return row ? mapRow(row) : null;
 }
 
-export async function createEmployee(input: Omit<Employee, 'id'>): Promise<Employee> {
+export async function createEmployee(input: Omit<LegacyEmployee, 'id'>): Promise<LegacyEmployee> {
   const db = await getDb();
   const id = generateId();
   await db.runAsync(
@@ -88,7 +89,7 @@ export async function createEmployee(input: Omit<Employee, 'id'>): Promise<Emplo
   return { id, ...input };
 }
 
-export async function updateEmployee(employee: Employee): Promise<void> {
+export async function updateEmployee(employee: LegacyEmployee): Promise<void> {
   const db = await getDb();
   await db.runAsync(
     `UPDATE employees SET

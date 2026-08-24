@@ -1,14 +1,5 @@
 import { Weekday } from './weekday';
 
-export type ShiftPreference = 'mattina' | 'pomeriggio' | 'sera' | 'nessuna';
-
-export const SHIFT_PREFERENCE_LABELS: Record<ShiftPreference, string> = {
-  mattina: 'Mattina',
-  pomeriggio: 'Pomeriggio',
-  sera: 'Sera',
-  nessuna: 'Nessuna preferenza',
-};
-
 /**
  * Priorità del dipendente nella generazione automatica: "alta" viene preferito quando ci sono
  * più candidati idonei per lo stesso turno, "bassa" viene usato solo se serve davvero (nessun
@@ -38,8 +29,8 @@ export interface Employee {
   maxWeeklyDays?: number;
   /** Giorni della settimana preferiti (vincolo soft), opzionale: nessuna preferenza se vuoto/non impostato. */
   preferredWeekdays?: Weekday[];
-  /** Preferenza di fascia oraria, vincolo soft. */
-  preference: ShiftPreference;
+  /** Fascia oraria preferita (id di una fascia del negozio), vincolo soft. Non impostata = nessuna preferenza. */
+  preferredCategoryId?: string;
   /**
    * Turni tipo a cui il dipendente va assegnato con priorità assoluta quando è idoneo (es.
    * "Inti il martedì fa sempre Sera 1"). Se il dipendente non è disponibile (ferie,
@@ -50,8 +41,9 @@ export interface Employee {
   /**
    * Numero massimo di turni per fascia oraria a settimana (vincolo hard), opzionale e
    * indipendente per fascia (es. Jack al massimo 4 turni di sera E al massimo 4 di mattina).
+   * Chiave: id della fascia.
    */
-  maxWeeklyShiftsByPreference?: Partial<Record<Exclude<ShiftPreference, 'nessuna'>, number>>;
+  maxWeeklyShiftsByCategory?: Record<string, number>;
   active: boolean;
   /** Id dell'account collegato a questo dipendente (una volta che si è "identificato" con l'app), se presente. */
   linkedUserId?: string;
