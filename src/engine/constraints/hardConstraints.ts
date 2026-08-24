@@ -6,6 +6,7 @@ import { Slot } from '../types';
 export type HardConstraintFailure =
   | 'inactive'
   | 'role_mismatch'
+  | 'not_pinned_for_day'
   | 'unavailability'
   | 'time_off'
   | 'max_hours'
@@ -23,6 +24,13 @@ export function findHardConstraintFailure(
 ): HardConstraintFailure | null {
   if (!employee.active) return 'inactive';
   if (!employeeRoleIds(employee).some((roleId) => slot.roleIds.includes(roleId))) return 'role_mismatch';
+
+  const pinnedForDay = context.pinnedTemplateIdsByEmployeeAndWeekday.get(employee.id)?.get(slot.weekday);
+  if (pinnedForDay && !pinnedForDay.has(slot.shiftTemplateId)) {
+    // Il dipendente ha uno o più turni fissi in questo giorno della settimana: quel giorno può
+    // essere assegnato SOLO a uno di quelli, mai a un turno diverso anche se idoneo.
+    return 'not_pinned_for_day';
+  }
 
   const unavailabilities = context.unavailabilitiesByEmployee.get(employee.id) ?? [];
   const hasUnavailabilityConflict = unavailabilities.some(

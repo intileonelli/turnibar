@@ -1,4 +1,4 @@
-import { TimeOff, Unavailability } from '@/src/models';
+import { Employee, ShiftTemplate, TimeOff, Unavailability, Weekday } from '@/src/models';
 import { shiftPreferenceCategory } from './dateUtils';
 import { Slot } from './types';
 
@@ -8,9 +8,17 @@ export interface SolverContext {
   timeOffDatesByEmployee: Map<string, Set<string>>;
   /** Se un dipendente può avere più di un turno nello stesso giorno (impostazione del negozio). */
   allowMultipleShiftsPerDay: boolean;
+  /**
+   * Per dipendente e giorno della settimana, l'insieme dei turni tipo "fissi" di quel giorno,
+   * se ne ha almeno uno: in quel caso, quel giorno, il dipendente può essere assegnato SOLO a
+   * uno di questi (mai a un turno diverso, anche se idoneo).
+   */
+  pinnedTemplateIdsByEmployeeAndWeekday: Map<string, Map<Weekday, Set<string>>>;
 }
 
 export function buildSolverContext(
+  employees: Employee[],
+  shiftTemplates: ShiftTemplate[],
   unavailabilities: Unavailability[],
   timeOff: TimeOff[],
   allowMultipleShiftsPerDay: boolean
@@ -29,7 +37,27 @@ export function buildSolverContext(
     timeOffDatesByEmployee.set(t.employeeId, set);
   }
 
-  return { unavailabilitiesByEmployee, timeOffDatesByEmployee, allowMultipleShiftsPerDay };
+  const weekdayByTemplateId = new Map(shiftTemplates.map((t) => [t.id, t.weekday]));
+  const pinnedTemplateIdsByEmployeeAndWeekday = new Map<string, Map<Weekday, Set<string>>>();
+  for (const employee of employees) {
+    if (!employee.pinnedShiftTemplateIds?.length) continue;
+    const byWeekday = new Map<Weekday, Set<string>>();
+    for (const templateId of employee.pinnedShiftTemplateIds) {
+      const weekday = weekdayByTemplateId.get(templateId);
+      if (weekday === undefined) continue;
+      const set = byWeekday.get(weekday) ?? new Set<string>();
+      set.add(templateId);
+      byWeekday.set(weekday, set);
+    }
+    if (byWeekday.size > 0) pinnedTemplateIdsByEmployeeAndWeekday.set(employee.id, byWeekday);
+  }
+
+  return {
+    unavailabilitiesByEmployee,
+    timeOffDatesByEmployee,
+    allowMultipleShiftsPerDay,
+    pinnedTemplateIdsByEmployeeAndWeekday,
+  };
 }
 
 interface TimeRange {

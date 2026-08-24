@@ -657,6 +657,54 @@ describe('generateSchedule', () => {
     expect(result.unresolvedShifts).toHaveLength(0);
   });
 
+  it('con un turno fisso, il dipendente non viene mai messo su un altro turno non fissato lo stesso giorno', () => {
+    const shiftTemplates: ShiftTemplate[] = [
+      {
+        id: 'shift-mattina-mar',
+        weekday: 2,
+        name: 'Mattina',
+        startTime: '09:00',
+        endTime: '13:00',
+        requirements: [{ roleIds: [ROLE_COMMESSO.id], count: 1 }],
+      },
+      {
+        id: 'shift-sera-mar',
+        weekday: 2,
+        name: 'Sera',
+        startTime: '18:00',
+        endTime: '22:00',
+        requirements: [{ roleIds: [ROLE_COMMESSO.id], count: 1 }],
+      },
+    ];
+
+    // Anna è pinnata solo sul turno del mattina: anche se è l'unica idonea per quello serale,
+    // non deve mai finirci, quel turno deve restare scoperto.
+    const anna = makeEmployee({
+      id: 'anna',
+      name: 'Anna',
+      roleId: ROLE_COMMESSO.id,
+      pinnedShiftTemplateIds: ['shift-mattina-mar'],
+    });
+
+    const result = generateSchedule(
+      {
+        weekStartDate: WEEK_START,
+        employees: [anna],
+        shiftTemplates,
+        unavailabilities: [],
+        timeOff: [],
+        allowMultipleShiftsPerDay: true,
+      },
+      ROLES
+    );
+
+    expect(result.assignments).toHaveLength(1);
+    expect(result.assignments[0].shiftTemplateId).toBe('shift-mattina-mar');
+    expect(result.assignments[0].employeeId).toBe('anna');
+    expect(result.unresolvedShifts).toHaveLength(1);
+    expect(result.unresolvedShifts[0].shiftTemplateId).toBe('shift-sera-mar');
+  });
+
   it('rispetta il limite massimo di turni per fascia oraria (indipendente per fascia)', () => {
     const anna = makeEmployee({
       id: 'anna',
