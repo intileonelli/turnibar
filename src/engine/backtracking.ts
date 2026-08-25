@@ -59,7 +59,8 @@ function solveExhaustive(
     const candidates = sortCandidatesByScore(
       getEligibleCandidates(employees, slot, state, context),
       slot,
-      state
+      state,
+      context
     );
 
     for (const candidate of candidates) {
@@ -85,7 +86,8 @@ function solveGreedy(slots: Slot[], employees: Employee[], context: SolverContex
     const candidates = sortCandidatesByScore(
       getEligibleCandidates(employees, slot, state, context),
       slot,
-      state
+      state,
+      context
     );
     if (candidates.length === 0) {
       unresolvedSlots.push(slot);

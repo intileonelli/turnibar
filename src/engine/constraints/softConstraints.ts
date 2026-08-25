@@ -1,5 +1,5 @@
 import { Employee } from '@/src/models';
-import { SolverState } from '../state';
+import { SolverContext, SolverState } from '../state';
 import { Slot } from '../types';
 
 export function preferenceMatches(employee: Employee, slot: Pick<Slot, 'categoryId'>): boolean {
@@ -24,14 +24,22 @@ function matchRolePriority(employee: Employee, slot: Pick<Slot, 'roleIds'>) {
  * a somme di più fattori minori (a differenza di un punteggio numerico unico, dove diversi
  * vantaggi piccoli potrebbero sommarsi e superare un vantaggio grande su un livello più
  * importante). L'ordine, dal più al meno importante, riflette quello scelto per l'azienda:
- * 1) turno fisso, 2) preferenza di fascia oraria, 3) idoneità di ruolo (principale o
- * alternativa), 4) priorità del dipendente, 5) giorno della settimana preferito, 6) equità nella
- * distribuzione delle ore. Ferie, indisponibilità e turni fissi "esclusivi" sono invece vincoli
- * hard, già applicati prima di arrivare qui (vedi hardConstraints.ts): tra i candidati che
- * arrivano a questo confronto sono già tutti idonei.
+ * 1) turno fisso, 1bis) fascia oraria richiesta per quella data specifica (stesso peso di un
+ * turno fisso, ma per un solo giorno), 2) preferenza di fascia oraria generale, 3) idoneità di
+ * ruolo (principale o alternativa), 4) priorità del dipendente, 5) giorno della settimana
+ * preferito, 6) equità nella distribuzione delle ore. Ferie, indisponibilità, turni fissi
+ * "esclusivi" e fasce richieste sono invece vincoli hard, già applicati prima di arrivare qui
+ * (vedi hardConstraints.ts): tra i candidati che arrivano a questo confronto sono già tutti
+ * idonei. Ma essere idonei non basta a farli VINCERE lo slot: senza un livello dedicato, un
+ * dipendente che ha chiesto una fascia per un giorno preciso non avrebbe alcun vantaggio su
+ * altri candidati altrettanto idonei (e la sua preferenza settimanale generale, se diversa,
+ * giocherebbe pure contro di lui).
  */
-function rankCandidate(employee: Employee, slot: Slot, state: SolverState): number[] {
+function rankCandidate(employee: Employee, slot: Slot, state: SolverState, context: SolverContext): number[] {
   const pinned = employee.pinnedShiftTemplateIds?.includes(slot.shiftTemplateId) ? 1 : 0;
+
+  const requestedCategoryForDate = context.categoryRequestByEmployeeAndDate.get(employee.id)?.get(slot.date);
+  const dateCategoryMatch = requestedCategoryForDate !== undefined && requestedCategoryForDate === slot.categoryId ? 1 : 0;
 
   let preference = 0;
   if (employee.preferredCategoryId) {
@@ -50,7 +58,7 @@ function rankCandidate(employee: Employee, slot: Slot, state: SolverState): numb
     fairness = 1 - state.getHours(employee.id) / employee.weeklyContractHours;
   }
 
-  return [pinned, preference, role, priority, weekday, fairness];
+  return [pinned, dateCategoryMatch, preference, role, priority, weekday, fairness];
 }
 
 /** Confronta due classifiche livello per livello: il primo livello diverso decide, i successivi contano solo a parità. */
@@ -64,7 +72,8 @@ function compareRanks(a: number[], b: number[]): number {
 export function sortCandidatesByScore(
   employees: Employee[],
   slot: Slot,
-  state: SolverState
+  state: SolverState,
+  context: SolverContext
 ): Employee[] {
-  return [...employees].sort((a, b) => compareRanks(rankCandidate(a, slot, state), rankCandidate(b, slot, state)));
+  return [...employees].sort((a, b) => compareRanks(rankCandidate(a, slot, state, context), rankCandidate(b, slot, state, context)));
 }

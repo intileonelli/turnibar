@@ -1013,4 +1013,49 @@ describe('generateSchedule', () => {
     expect(result.unresolvedShifts).toHaveLength(1);
     expect(result.unresolvedShifts[0].shiftTemplateId).toBe('shift-mattina');
   });
+
+  it('la fascia richiesta per un giorno fa vincere lo slot al dipendente, anche contro un candidato altrimenti pari', () => {
+    // Un solo slot di apertura: sia Anna che Bruno sono idonei (stesso ruolo), ma solo Anna ha
+    // chiesto la fascia "apertura" per questo giorno. La sua preferenza settimanale generale è
+    // "mattina" (diversa), quindi senza un vantaggio dedicato per la richiesta puntuale
+    // perderebbe comunque contro un candidato neutro come Bruno.
+    const shiftTemplates: ShiftTemplate[] = [
+      {
+        id: 'shift-apertura',
+        weekday: 1,
+        name: 'Apertura',
+        startTime: '06:00',
+        endTime: '12:00',
+        categoryId: CATEGORY_MATTINA,
+        requirements: [{ roleIds: [ROLE_COMMESSO.id], count: 1 }],
+      },
+    ];
+
+    const anna = makeEmployee({
+      id: 'anna',
+      name: 'Anna',
+      roleId: ROLE_COMMESSO.id,
+      preferredCategoryId: CATEGORY_SERA,
+    });
+    const bruno = makeEmployee({ id: 'bruno', name: 'Bruno', roleId: ROLE_COMMESSO.id });
+    const categoryRequests: CategoryRequest[] = [
+      { id: 'cr1', employeeId: 'anna', date: WEEK_START, categoryId: CATEGORY_MATTINA },
+    ];
+
+    const result = generateSchedule(
+      {
+        weekStartDate: WEEK_START,
+        employees: [bruno, anna], // bruno prima nell'elenco, ma anna deve vincere comunque
+        shiftTemplates,
+        unavailabilities: [],
+        timeOff: [],
+        categoryRequests,
+        allowMultipleShiftsPerDay: true,
+      },
+      ROLES
+    );
+
+    expect(result.assignments).toHaveLength(1);
+    expect(result.assignments[0].employeeId).toBe('anna');
+  });
 });
