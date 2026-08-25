@@ -2,6 +2,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Employee, ShiftAssignment, ShiftTemplate, WEEKDAY_LABELS_SHORT, WEEKDAYS } from '@/src/models';
 import { dateForWeekday, timeToMinutes } from '@/src/engine';
 import { formatDateLong } from '@/src/utils/date';
+import { getContrastTextColor } from '@/src/utils/color';
 import { colors } from '@/src/components/shared/colors';
 
 const COLUMN_WIDTH = 190;
@@ -100,16 +101,19 @@ export function WeeklyShiftGrid({
                                 const matched = [primaryIdx, secondaryIdx].filter((i) => i !== -1);
                                 isFallback = matched.length > 0 && Math.min(...matched) > 0;
                               }
+                              const employeeColor = employee?.color ?? colors.textMuted;
                               return (
                                 <Pressable
                                   key={a.id}
                                   onPress={() => onAssignmentPress(a, template)}
-                                  style={[
-                                    styles.employeeChip,
-                                    { borderColor: employee?.color ?? colors.border },
-                                  ]}
+                                  style={[styles.employeeChip, { backgroundColor: employeeColor }]}
                                 >
-                                  <Text style={styles.employeeChipText}>
+                                  <Text
+                                    style={[
+                                      styles.employeeChipText,
+                                      { color: getContrastTextColor(employeeColor) },
+                                    ]}
+                                  >
                                     {employee?.name ?? '—'}
                                     {isFallback ? ' ⚠' : ''}
                                     {a.manuallyEdited ? ' ✎' : ''}
@@ -204,16 +208,14 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
   },
   employeeChip: {
-    borderWidth: 1.5,
     borderRadius: 6,
-    paddingVertical: 2,
+    paddingVertical: 3,
     paddingHorizontal: 6,
     marginRight: 4,
     marginBottom: 4,
   },
   employeeChipText: {
     fontSize: 13,
-    color: colors.text,
     fontWeight: '700',
   },
   emptySlot: {
