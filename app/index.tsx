@@ -52,6 +52,12 @@ export default function HomeScreen() {
           </>
         )}
         <View style={styles.spacer} />
+        <Button
+          label="Cambia password"
+          variant="secondary"
+          onPress={() => router.push('/cambia-password')}
+        />
+        <View style={styles.spacer} />
         <Button label="Esci" variant="danger" onPress={() => signOut()} />
       </View>
     </ScreenContainer>

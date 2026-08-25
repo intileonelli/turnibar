@@ -1,19 +1,31 @@
-import { StyleSheet, Text, TextInput, TextInputProps, View } from 'react-native';
+import { useState } from 'react';
+import { Pressable, StyleSheet, Text, TextInput, TextInputProps, View } from 'react-native';
 import { colors } from './colors';
 
 interface TextFieldProps extends TextInputProps {
   label: string;
 }
 
-export function TextField({ label, style, ...rest }: TextFieldProps) {
+export function TextField({ label, style, secureTextEntry, ...rest }: TextFieldProps) {
+  const [visible, setVisible] = useState(false);
+  const isPasswordField = secureTextEntry === true;
+
   return (
     <View style={styles.container}>
       <Text style={styles.label}>{label}</Text>
-      <TextInput
-        style={[styles.input, style]}
-        placeholderTextColor={colors.textMuted}
-        {...rest}
-      />
+      <View style={styles.inputRow}>
+        <TextInput
+          style={[styles.input, isPasswordField && styles.inputWithToggle, style]}
+          placeholderTextColor={colors.textMuted}
+          secureTextEntry={isPasswordField && !visible}
+          {...rest}
+        />
+        {isPasswordField && (
+          <Pressable style={styles.toggleButton} onPress={() => setVisible((v) => !v)}>
+            <Text style={styles.toggleButtonText}>{visible ? 'Nascondi' : 'Mostra'}</Text>
+          </Pressable>
+        )}
+      </View>
     </View>
   );
 }
@@ -28,6 +40,9 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     marginBottom: 6,
   },
+  inputRow: {
+    justifyContent: 'center',
+  },
   input: {
     borderWidth: 1,
     borderColor: colors.border,
@@ -37,5 +52,17 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: colors.text,
     backgroundColor: colors.surface,
+  },
+  inputWithToggle: {
+    paddingRight: 72,
+  },
+  toggleButton: {
+    position: 'absolute',
+    right: 10,
+  },
+  toggleButtonText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.primary,
   },
 });

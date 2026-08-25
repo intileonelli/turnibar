@@ -33,6 +33,7 @@ function AppTabs() {
       <Tabs.Screen name="calendario" options={{ title: strings.tabs.calendar, headerShown: false }} />
       <Tabs.Screen name="ferie" options={{ title: strings.tabs.leave }} />
       <Tabs.Screen name="migrazione-dati" options={{ href: null }} />
+      <Tabs.Screen name="cambia-password" options={{ href: null, title: 'Cambia password' }} />
       <Tabs.Screen name="+not-found" options={{ href: null }} />
     </Tabs>
   );
