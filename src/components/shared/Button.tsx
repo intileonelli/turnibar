@@ -12,13 +12,18 @@ interface ButtonProps {
 }
 
 export function Button({ label, onPress, variant = 'primary', disabled, loading }: ButtonProps) {
+  // Calcolati ad ogni render (non a livello di modulo) perché colors.primary/primaryMuted
+  // possono cambiare a runtime (personalizzazione colori dell'azienda).
+  const variantBackground =
+    variant === 'primary' ? colors.primary : variant === 'secondary' ? colors.primaryMuted : colors.danger;
+
   return (
     <Pressable
       onPress={onPress}
       disabled={disabled || loading}
       style={({ pressed }) => [
         styles.base,
-        variantStyles[variant],
+        { backgroundColor: variantBackground },
         (disabled || loading) && styles.disabled,
         pressed && !disabled && !loading && styles.pressed,
       ]}
@@ -26,7 +31,7 @@ export function Button({ label, onPress, variant = 'primary', disabled, loading 
       {loading ? (
         <ActivityIndicator color={variant === 'secondary' ? colors.primary : '#fff'} />
       ) : (
-        <Text style={[styles.label, variant === 'secondary' && styles.labelSecondary]}>{label}</Text>
+        <Text style={[styles.label, variant === 'secondary' && { color: colors.primary }]}>{label}</Text>
       )}
     </Pressable>
   );
@@ -50,20 +55,5 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 15,
     fontWeight: '600',
-  },
-  labelSecondary: {
-    color: colors.primary,
-  },
-});
-
-const variantStyles = StyleSheet.create({
-  primary: {
-    backgroundColor: colors.primary,
-  },
-  secondary: {
-    backgroundColor: colors.primaryMuted,
-  },
-  danger: {
-    backgroundColor: colors.danger,
   },
 });

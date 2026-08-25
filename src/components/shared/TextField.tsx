@@ -22,7 +22,9 @@ export function TextField({ label, style, secureTextEntry, ...rest }: TextFieldP
         />
         {isPasswordField && (
           <Pressable style={styles.toggleButton} onPress={() => setVisible((v) => !v)}>
-            <Text style={styles.toggleButtonText}>{visible ? 'Nascondi' : 'Mostra'}</Text>
+            <Text style={[styles.toggleButtonText, { color: colors.primary }]}>
+              {visible ? 'Nascondi' : 'Mostra'}
+            </Text>
           </Pressable>
         )}
       </View>
@@ -63,6 +65,5 @@ const styles = StyleSheet.create({
   toggleButtonText: {
     fontSize: 12,
     fontWeight: '700',
-    color: colors.primary,
   },
 });

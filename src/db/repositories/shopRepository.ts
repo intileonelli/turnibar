@@ -42,11 +42,20 @@ export async function getShopSettings(): Promise<ShopSettings> {
   const { data, error } = await supabase.rpc('get_shop_settings');
   if (error) throw error;
   const row = data?.[0] as
-    | { max_daily_time_off: number | null; allow_multiple_shifts_per_day: boolean }
+    | {
+        max_daily_time_off: number | null;
+        allow_multiple_shifts_per_day: boolean;
+        primary_color: string | null;
+        accent_color: string | null;
+        background_id: string | null;
+      }
     | undefined;
   return {
     maxDailyTimeOff: row?.max_daily_time_off ?? undefined,
     allowMultipleShiftsPerDay: row?.allow_multiple_shifts_per_day ?? false,
+    primaryColor: row?.primary_color ?? undefined,
+    accentColor: row?.accent_color ?? undefined,
+    backgroundId: row?.background_id ?? undefined,
   };
 }
 
@@ -54,6 +63,9 @@ export async function updateShopSettings(settings: ShopSettings): Promise<void> 
   const { error } = await supabase.rpc('update_shop_settings', {
     p_max_daily_time_off: settings.maxDailyTimeOff ?? null,
     p_allow_multiple_shifts_per_day: settings.allowMultipleShiftsPerDay,
+    p_primary_color: settings.primaryColor ?? null,
+    p_accent_color: settings.accentColor ?? null,
+    p_background_id: settings.backgroundId ?? null,
   });
   if (error) throw error;
 }

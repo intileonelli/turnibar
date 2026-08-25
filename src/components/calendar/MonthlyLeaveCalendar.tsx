@@ -84,7 +84,7 @@ export function MonthlyLeaveCalendar({
                   styles.dayCellPressable,
                   isFull && !isAbsent && styles.dayCellFull,
                   isPartial && styles.dayCellPartial,
-                  isFullDay && styles.dayCellMarked,
+                  isFullDay && { backgroundColor: colors.primary, borderColor: colors.primary },
                 ]}
               >
                 <Text style={[styles.dayText, isFullDay && styles.dayTextMarked]}>{day}</Text>
@@ -134,10 +134,6 @@ const styles = StyleSheet.create({
   dayCellFull: {
     borderColor: colors.danger,
     borderWidth: 1.5,
-  },
-  dayCellMarked: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
   },
   dayCellPartial: {
     backgroundColor: colors.warningMuted,

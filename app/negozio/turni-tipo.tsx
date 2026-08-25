@@ -361,12 +361,18 @@ export default function ShiftTemplatesScreen() {
           <View style={styles.requirementGroupHeader}>
             <Text style={styles.requirementGroupTitle}>Requisito {index + 1}</Text>
             <View style={styles.stepper}>
-              <Pressable style={styles.stepperButton} onPress={() => updateGroupCount(index, -1)}>
-                <Text style={styles.stepperButtonText}>−</Text>
+              <Pressable
+                style={[styles.stepperButton, { backgroundColor: colors.primaryMuted }]}
+                onPress={() => updateGroupCount(index, -1)}
+              >
+                <Text style={[styles.stepperButtonText, { color: colors.primary }]}>−</Text>
               </Pressable>
               <Text style={styles.stepperValue}>{group.count}</Text>
-              <Pressable style={styles.stepperButton} onPress={() => updateGroupCount(index, 1)}>
-                <Text style={styles.stepperButtonText}>+</Text>
+              <Pressable
+                style={[styles.stepperButton, { backgroundColor: colors.primaryMuted }]}
+                onPress={() => updateGroupCount(index, 1)}
+              >
+                <Text style={[styles.stepperButtonText, { color: colors.primary }]}>+</Text>
               </Pressable>
             </View>
             {requirementGroups.length > 1 && (
@@ -544,14 +550,12 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 6,
-    backgroundColor: colors.primaryMuted,
     alignItems: 'center',
     justifyContent: 'center',
   },
   stepperButtonText: {
     fontSize: 16,
     fontWeight: '700',
-    color: colors.primary,
   },
   stepperValue: {
     width: 28,

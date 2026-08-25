@@ -1,7 +1,8 @@
 import { forwardRef, PropsWithChildren } from 'react';
 import { NativeScrollEvent, NativeSyntheticEvent, ScrollView, StyleSheet, View, ViewStyle } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { colors } from './colors';
+import { colors, themeState } from './colors';
+import { ScreenBackground } from './ScreenBackground';
 
 interface ScreenContainerProps extends PropsWithChildren {
   scroll?: boolean;
@@ -16,6 +17,7 @@ export const ScreenContainer = forwardRef<ScrollView, ScreenContainerProps>(func
 ) {
   return (
     <SafeAreaView style={styles.safeArea} edges={['bottom']}>
+      <ScreenBackground backgroundId={themeState.backgroundId} />
       {scroll ? (
         <ScrollView
           ref={ref}

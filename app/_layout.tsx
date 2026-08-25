@@ -5,9 +5,11 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { DbGate } from '@/src/components/shared/DbGate';
 import { AuthGate } from '@/src/components/shared/AuthGate';
+import { ThemeGate } from '@/src/components/shared/ThemeGate';
 import { useCurrentAuth } from '@/src/context/AuthContext';
 import { colors } from '@/src/components/shared/colors';
 import { NAV_ICONS } from '@/src/constants/navIcons';
+import { useThemeStore } from '@/src/store/themeStore';
 import { strings } from '@/src/i18n/strings';
 
 function tabIcon(name: keyof typeof Ionicons.glyphMap) {
@@ -18,6 +20,11 @@ function tabIcon(name: keyof typeof Ionicons.glyphMap) {
 
 function AppTabs() {
   const { profile } = useCurrentAuth();
+  // Sottoscrive lo themeStore: quando qualcuno cambia i colori dell'app (in qualsiasi
+  // schermata), questo componente si ri-renderizza rileggendo `colors`, aggiornando anche la
+  // barra di navigazione (che altrimenti resterebbe con i vecchi colori finché l'app non viene
+  // ricaricata, dato che screenOptions viene valutato solo quando AppTabs ri-renderizza).
+  useThemeStore((s) => s.version);
   const isOwner = profile?.role === 'owner';
 
   return (
@@ -68,10 +75,12 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <AuthGate>
-          <DbGate>
-            <StatusBar style="dark" />
-            <AppTabs />
-          </DbGate>
+          <ThemeGate>
+            <DbGate>
+              <StatusBar style="dark" />
+              <AppTabs />
+            </DbGate>
+          </ThemeGate>
         </AuthGate>
       </SafeAreaProvider>
     </GestureHandlerRootView>

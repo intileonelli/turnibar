@@ -11,8 +11,8 @@ interface IconTileProps {
 export function IconTile({ icon, label, onPress }: IconTileProps) {
   return (
     <Pressable onPress={onPress} style={({ pressed }) => [styles.tile, pressed && styles.pressed]}>
-      <View style={styles.iconCircle}>
-        <Ionicons name={icon} size={28} color={colors.primary} />
+      <View style={[styles.iconCircle, { backgroundColor: colors.accentMuted }]}>
+        <Ionicons name={icon} size={28} color={colors.accent} />
       </View>
       <Text style={styles.label} numberOfLines={2}>
         {label}
@@ -34,7 +34,6 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: colors.primaryMuted,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 8,

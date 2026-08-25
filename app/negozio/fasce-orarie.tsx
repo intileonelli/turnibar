@@ -93,18 +93,26 @@ export default function ShiftCategoriesScreen() {
               <Text style={styles.name}>{category.name}</Text>
               <View style={styles.actions}>
                 <Pressable
-                  style={[styles.orderButton, index === 0 && styles.orderButtonDisabled]}
+                  style={[
+                    styles.orderButton,
+                    { backgroundColor: colors.primaryMuted },
+                    index === 0 && styles.orderButtonDisabled,
+                  ]}
                   disabled={index === 0}
                   onPress={() => moveCategory(category.id, -1)}
                 >
-                  <Text style={styles.orderButtonText}>↑</Text>
+                  <Text style={[styles.orderButtonText, { color: colors.primary }]}>↑</Text>
                 </Pressable>
                 <Pressable
-                  style={[styles.orderButton, index === categories.length - 1 && styles.orderButtonDisabled]}
+                  style={[
+                    styles.orderButton,
+                    { backgroundColor: colors.primaryMuted },
+                    index === categories.length - 1 && styles.orderButtonDisabled,
+                  ]}
                   disabled={index === categories.length - 1}
                   onPress={() => moveCategory(category.id, 1)}
                 >
-                  <Text style={styles.orderButtonText}>↓</Text>
+                  <Text style={[styles.orderButtonText, { color: colors.primary }]}>↓</Text>
                 </Pressable>
                 <View style={styles.actionButton}>
                   <Button label="Modifica" variant="secondary" onPress={() => startEdit(category.id)} />
@@ -172,7 +180,6 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 6,
-    backgroundColor: colors.primaryMuted,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -182,7 +189,6 @@ const styles = StyleSheet.create({
   orderButtonText: {
     fontSize: 14,
     fontWeight: '700',
-    color: colors.primary,
   },
   sectionTitle: {
     fontSize: 16,

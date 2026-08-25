@@ -104,7 +104,7 @@ export default function CompanyAccessScreen() {
 
       <Card>
         <Text style={styles.codeLabel}>Codice azienda</Text>
-        <Text style={styles.code}>{company?.inviteCode ?? '...'}</Text>
+        <Text style={[styles.code, { color: colors.primary }]}>{company?.inviteCode ?? '...'}</Text>
         <Button label="Rigenera codice" variant="secondary" onPress={handleRegenerate} loading={regenerating} />
       </Card>
 
@@ -170,7 +170,6 @@ const styles = StyleSheet.create({
   code: {
     fontSize: 22,
     fontWeight: '800',
-    color: colors.primary,
     letterSpacing: 2,
     marginBottom: 12,
   },
