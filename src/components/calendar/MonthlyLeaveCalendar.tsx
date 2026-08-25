@@ -7,9 +7,13 @@ interface MonthlyLeaveCalendarProps {
   year: number;
   /** Mese 1-12. */
   month: number;
-  /** Giorni di ferie del dipendente selezionato. */
+  /** Giorni di ferie (intera giornata) del dipendente selezionato. */
   markedDates: Set<string>;
-  /** Numero di ALTRI dipendenti (diversi da quello selezionato) in ferie per ogni data. */
+  /** Giorni di permesso (fascia oraria) del dipendente selezionato. */
+  partialDates?: Set<string>;
+  /** Giorni con una fascia oraria richiesta dal dipendente selezionato. */
+  categoryRequestDates?: Set<string>;
+  /** Numero di ALTRI dipendenti (diversi da quello selezionato) in ferie/permesso per ogni data. */
   otherCounts?: Record<string, number>;
   /** Limite massimo di dipendenti in ferie nello stesso giorno, se impostato. */
   maxPerDay?: number;
@@ -30,6 +34,8 @@ export function MonthlyLeaveCalendar({
   year,
   month,
   markedDates,
+  partialDates = new Set(),
+  categoryRequestDates = new Set(),
   otherCounts = {},
   maxPerDay,
   onDayPress,
@@ -62,9 +68,12 @@ export function MonthlyLeaveCalendar({
           {week.map((day, dayIndex) => {
             if (day === null) return <View key={dayIndex} style={styles.dayCell} />;
             const dateStr = `${year}-${pad(month)}-${pad(day)}`;
-            const isMarked = markedDates.has(dateStr);
+            const isFullDay = markedDates.has(dateStr);
+            const isPartial = partialDates.has(dateStr);
+            const isAbsent = isFullDay || isPartial;
+            const hasCategoryRequest = categoryRequestDates.has(dateStr);
             const otherCount = otherCounts[dateStr] ?? 0;
-            const totalCount = otherCount + (isMarked ? 1 : 0);
+            const totalCount = otherCount + (isAbsent ? 1 : 0);
             const isFull = maxPerDay !== undefined && totalCount >= maxPerDay;
             return (
               <Pressable
@@ -73,11 +82,13 @@ export function MonthlyLeaveCalendar({
                 style={[
                   styles.dayCell,
                   styles.dayCellPressable,
-                  isFull && !isMarked && styles.dayCellFull,
-                  isMarked && styles.dayCellMarked,
+                  isFull && !isAbsent && styles.dayCellFull,
+                  isPartial && styles.dayCellPartial,
+                  isFullDay && styles.dayCellMarked,
                 ]}
               >
-                <Text style={[styles.dayText, isMarked && styles.dayTextMarked]}>{day}</Text>
+                <Text style={[styles.dayText, isFullDay && styles.dayTextMarked]}>{day}</Text>
+                {hasCategoryRequest && <View style={styles.requestDot} />}
                 {otherCount > 0 && (
                   <View style={[styles.badge, isFull && styles.badgeFull]}>
                     <Text style={styles.badgeText}>{otherCount}</Text>
@@ -128,6 +139,11 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
     borderColor: colors.primary,
   },
+  dayCellPartial: {
+    backgroundColor: colors.warningMuted,
+    borderColor: colors.warning,
+    borderWidth: 1.5,
+  },
   dayText: {
     fontSize: 12,
     color: colors.text,
@@ -155,5 +171,13 @@ const styles = StyleSheet.create({
     fontSize: 9,
     fontWeight: '700',
     color: '#fff',
+  },
+  requestDot: {
+    position: 'absolute',
+    bottom: 3,
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: colors.success,
   },
 });

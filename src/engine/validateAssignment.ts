@@ -67,7 +67,11 @@ export function validateAssignment(input: ValidateAssignmentInput): ConstraintVi
     });
   }
 
-  const hasTimeOff = input.timeOff.some((t) => t.employeeId === employee.id && t.date === slot.date);
+  const hasTimeOff = input.timeOff.some((t) => {
+    if (t.employeeId !== employee.id || t.date !== slot.date) return false;
+    if (t.startTime === undefined || t.endTime === undefined) return true; // ferie: intera giornata
+    return rangesOverlap(slot.startTime, slot.endTime, t.startTime, t.endTime); // permesso: solo la fascia
+  });
   if (hasTimeOff) {
     violations.push({
       ...base,

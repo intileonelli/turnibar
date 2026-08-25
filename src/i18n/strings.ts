@@ -106,7 +106,6 @@ export const strings = {
     title: 'Ferie',
     selectEmployee: 'Seleziona un dipendente',
     noEmployeeSelected: 'Seleziona un dipendente per vedere e modificare le sue ferie.',
-    tapToToggle: 'Tocca un giorno per segnarlo/rimuoverlo come ferie. Il numero nell\'angolo mostra quanti altri dipendenti sono già in ferie quel giorno; il bordo rosso indica che il giorno ha raggiunto il limite.',
     maxPerDay: 'Limite dipendenti in ferie per giorno (opzionale)',
     maxPerDayHint: 'Lascia vuoto per nessun limite. Varia da azienda ad azienda.',
     limitReachedTitle: 'Limite raggiunto',

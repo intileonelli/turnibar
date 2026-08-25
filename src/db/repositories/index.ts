@@ -3,6 +3,7 @@ export * as shiftCategoryRepository from './shiftCategoryRepository';
 export * as employeeRepository from './employeeRepository';
 export * as unavailabilityRepository from './unavailabilityRepository';
 export * as timeOffRepository from './timeOffRepository';
+export * as categoryRequestRepository from './categoryRequestRepository';
 export * as shopRepository from './shopRepository';
 export * as shiftTemplateRepository from './shiftTemplateRepository';
 export * as scheduleRepository from './scheduleRepository';

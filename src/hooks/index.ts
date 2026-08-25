@@ -4,5 +4,6 @@ export * from './useOpeningHours';
 export * from './useShiftTemplates';
 export * from './useTimeOff';
 export * from './useAllTimeOff';
+export * from './useAllCategoryRequests';
 export * from './useShopSettings';
 export * from './useSchedule';

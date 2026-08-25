@@ -3,6 +3,7 @@ export * from './role';
 export * from './employee';
 export * from './unavailability';
 export * from './timeOff';
+export * from './categoryRequest';
 export * from './shop';
 export * from './shiftCategory';
 export * from './schedule';

@@ -1,4 +1,4 @@
-import { Employee, ShiftTemplate, TimeOff, Unavailability, Weekday } from '@/src/models';
+import { CategoryRequest, Employee, ShiftTemplate, TimeOff, Unavailability, Weekday } from '@/src/models';
 
 export interface EngineInput {
   /** Lunedì della settimana da generare, formato "YYYY-MM-DD". */
@@ -8,6 +8,8 @@ export interface EngineInput {
   shiftTemplates: ShiftTemplate[];
   unavailabilities: Unavailability[];
   timeOff: TimeOff[];
+  /** Fasce orarie richieste dai dipendenti per date specifiche (come turni fissi, ma per un solo giorno). */
+  categoryRequests?: CategoryRequest[];
   /** Se un dipendente può avere più di un turno nello stesso giorno (impostazione del negozio). */
   allowMultipleShiftsPerDay: boolean;
 }

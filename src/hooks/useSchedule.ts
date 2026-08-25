@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react';
 import { useFocusEffect } from 'expo-router';
 import {
+  categoryRequestRepository,
   employeeRepository,
   roleRepository,
   scheduleRepository,
@@ -36,14 +37,16 @@ export function useSchedule(weekStartDate: string) {
   const generate = useCallback(async (): Promise<ScheduleResult> => {
     setGenerating(true);
     try {
-      const [employees, shiftTemplates, unavailabilities, timeOff, roles, shopSettings] = await Promise.all([
-        employeeRepository.listEmployees(),
-        shiftTemplateRepository.listShiftTemplates(),
-        unavailabilityRepository.listAllUnavailabilities(),
-        timeOffRepository.listAllTimeOff(),
-        roleRepository.listRoles(),
-        shopRepository.getShopSettings(),
-      ]);
+      const [employees, shiftTemplates, unavailabilities, timeOff, categoryRequests, roles, shopSettings] =
+        await Promise.all([
+          employeeRepository.listEmployees(),
+          shiftTemplateRepository.listShiftTemplates(),
+          unavailabilityRepository.listAllUnavailabilities(),
+          timeOffRepository.listAllTimeOff(),
+          categoryRequestRepository.listAllCategoryRequests(),
+          roleRepository.listRoles(),
+          shopRepository.getShopSettings(),
+        ]);
 
       const result = generateSchedule(
         {
@@ -52,6 +55,7 @@ export function useSchedule(weekStartDate: string) {
           shiftTemplates,
           unavailabilities,
           timeOff,
+          categoryRequests,
           allowMultipleShiftsPerDay: shopSettings.allowMultipleShiftsPerDay,
         },
         roles

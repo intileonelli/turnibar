@@ -6,6 +6,8 @@ interface TimeOffRow {
   employee_id: string;
   date: string;
   note: string | null;
+  start_time: string | null;
+  end_time: string | null;
 }
 
 function mapRow(row: TimeOffRow): TimeOff {
@@ -14,6 +16,8 @@ function mapRow(row: TimeOffRow): TimeOff {
     employeeId: row.employee_id,
     date: row.date,
     note: row.note ?? undefined,
+    startTime: row.start_time ?? undefined,
+    endTime: row.end_time ?? undefined,
   };
 }
 
@@ -33,13 +37,36 @@ export async function listAllTimeOff(): Promise<TimeOff[]> {
   return (data ?? []).map(mapRow);
 }
 
-/** Marca un giorno come ferie per il dipendente. Se già marcato, non fa nulla. */
+/**
+ * Marca un giorno intero come ferie per il dipendente. Sostituisce l'eventuale permesso (fascia
+ * oraria) già presente per quel giorno, riportandolo ad assenza per l'intera giornata.
+ */
 export async function addTimeOff(employeeId: string, date: string, note?: string): Promise<void> {
   const { error } = await supabase
     .from('time_off')
     .upsert(
-      { employee_id: employeeId, date, note: note ?? null },
-      { onConflict: 'employee_id,date', ignoreDuplicates: true }
+      { employee_id: employeeId, date, note: note ?? null, start_time: null, end_time: null },
+      { onConflict: 'employee_id,date' }
+    );
+  if (error) throw error;
+}
+
+/**
+ * Imposta un permesso (assenza limitata a una fascia oraria) per il dipendente in un giorno.
+ * Sostituisce l'eventuale ferie/permesso già presente per quel giorno (un solo record per data).
+ */
+export async function setPermit(
+  employeeId: string,
+  date: string,
+  startTime: string,
+  endTime: string,
+  note?: string
+): Promise<void> {
+  const { error } = await supabase
+    .from('time_off')
+    .upsert(
+      { employee_id: employeeId, date, start_time: startTime, end_time: endTime, note: note ?? null },
+      { onConflict: 'employee_id,date' }
     );
   if (error) throw error;
 }

@@ -7,6 +7,7 @@ export type HardConstraintFailure =
   | 'inactive'
   | 'role_mismatch'
   | 'not_pinned_for_day'
+  | 'not_requested_category_for_day'
   | 'unavailability'
   | 'time_off'
   | 'max_hours'
@@ -32,14 +33,27 @@ export function findHardConstraintFailure(
     return 'not_pinned_for_day';
   }
 
+  const requestedCategory = context.categoryRequestByEmployeeAndDate.get(employee.id)?.get(slot.date);
+  if (requestedCategory !== undefined && requestedCategory !== slot.categoryId) {
+    // Il dipendente ha chiesto di lavorare solo in una fascia oraria per questa data specifica:
+    // può essere assegnato SOLO a un turno di quella fascia, mai a una fascia diversa.
+    return 'not_requested_category_for_day';
+  }
+
   const unavailabilities = context.unavailabilitiesByEmployee.get(employee.id) ?? [];
   const hasUnavailabilityConflict = unavailabilities.some(
     (u) => u.weekday === slot.weekday && rangesOverlap(slot.startTime, slot.endTime, u.startTime, u.endTime)
   );
   if (hasUnavailabilityConflict) return 'unavailability';
 
-  const timeOffDates = context.timeOffDatesByEmployee.get(employee.id);
-  if (timeOffDates?.has(slot.date)) return 'time_off';
+  const timeOffForDate = context.timeOffByEmployeeAndDate.get(employee.id)?.get(slot.date);
+  if (timeOffForDate) {
+    const hasConflict = timeOffForDate.some((t) => {
+      if (t.startTime === undefined || t.endTime === undefined) return true; // ferie: intera giornata
+      return rangesOverlap(slot.startTime, slot.endTime, t.startTime, t.endTime); // permesso: solo la fascia
+    });
+    if (hasConflict) return 'time_off';
+  }
 
   const duration = shiftDurationHours(slot.startTime, slot.endTime);
   if (

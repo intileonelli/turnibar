@@ -1,4 +1,4 @@
-import { Employee, Role, ShiftTemplate, TimeOff, Unavailability } from '@/src/models';
+import { CategoryRequest, Employee, Role, ShiftTemplate, TimeOff, Unavailability } from '@/src/models';
 import { generateSchedule } from '../generateSchedule';
 import { EngineInput } from '../types';
 
@@ -916,5 +916,100 @@ describe('generateSchedule', () => {
     );
 
     expect(result.assignments[0].employeeId).toBe('anna');
+  });
+
+  it('un permesso blocca solo la fascia oraria indicata, non l\'intera giornata', () => {
+    const anna = makeEmployee({ id: 'anna', name: 'Anna', roleId: ROLE_COMMESSO.id });
+
+    const shiftTemplates: ShiftTemplate[] = [
+      {
+        id: 'shift-mattina',
+        weekday: 1,
+        name: 'Mattina',
+        startTime: '09:00',
+        endTime: '13:00',
+        categoryId: CATEGORY_MATTINA,
+        requirements: [{ roleIds: [ROLE_COMMESSO.id], count: 1 }],
+      },
+      {
+        id: 'shift-sera',
+        weekday: 1,
+        name: 'Sera',
+        startTime: '18:00',
+        endTime: '22:00',
+        categoryId: CATEGORY_SERA,
+        requirements: [{ roleIds: [ROLE_COMMESSO.id], count: 1 }],
+      },
+    ];
+
+    // Permesso solo dalle 09:00 alle 13:00: il turno del mattino si sovrappone, quello serale no.
+    const timeOff: TimeOff[] = [
+      { id: 'p1', employeeId: 'anna', date: WEEK_START, startTime: '09:00', endTime: '13:00' },
+    ];
+
+    const result = generateSchedule(
+      {
+        weekStartDate: WEEK_START,
+        employees: [anna],
+        shiftTemplates,
+        unavailabilities: [],
+        timeOff,
+        allowMultipleShiftsPerDay: true,
+      },
+      ROLES
+    );
+
+    expect(result.unresolvedShifts).toHaveLength(1);
+    expect(result.unresolvedShifts[0].shiftTemplateId).toBe('shift-mattina');
+    expect(result.assignments).toHaveLength(1);
+    expect(result.assignments[0].shiftTemplateId).toBe('shift-sera');
+    expect(result.assignments[0].employeeId).toBe('anna');
+  });
+
+  it('una fascia oraria richiesta per un giorno limita il dipendente a quella fascia, quel giorno soltanto', () => {
+    const shiftTemplates: ShiftTemplate[] = [
+      {
+        id: 'shift-mattina',
+        weekday: 1,
+        name: 'Mattina',
+        startTime: '09:00',
+        endTime: '13:00',
+        categoryId: CATEGORY_MATTINA,
+        requirements: [{ roleIds: [ROLE_COMMESSO.id], count: 1 }],
+      },
+      {
+        id: 'shift-sera',
+        weekday: 1,
+        name: 'Sera',
+        startTime: '18:00',
+        endTime: '22:00',
+        categoryId: CATEGORY_SERA,
+        requirements: [{ roleIds: [ROLE_COMMESSO.id], count: 1 }],
+      },
+    ];
+
+    const anna = makeEmployee({ id: 'anna', name: 'Anna', roleId: ROLE_COMMESSO.id });
+    const categoryRequests: CategoryRequest[] = [
+      { id: 'cr1', employeeId: 'anna', date: WEEK_START, categoryId: CATEGORY_SERA },
+    ];
+
+    const result = generateSchedule(
+      {
+        weekStartDate: WEEK_START,
+        employees: [anna],
+        shiftTemplates,
+        unavailabilities: [],
+        timeOff: [],
+        categoryRequests,
+        allowMultipleShiftsPerDay: true,
+      },
+      ROLES
+    );
+
+    expect(result.assignments).toHaveLength(1);
+    expect(result.assignments[0].shiftTemplateId).toBe('shift-sera');
+    expect(result.assignments[0].employeeId).toBe('anna');
+    expect(result.unresolvedShifts).toHaveLength(1);
+    expect(result.unresolvedShifts[0].shiftTemplateId).toBe('shift-mattina');
   });
 });

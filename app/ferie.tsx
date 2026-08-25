@@ -6,10 +6,13 @@ import { Button } from '@/src/components/shared/Button';
 import { TextField } from '@/src/components/shared/TextField';
 import { colors } from '@/src/components/shared/colors';
 import { MonthlyLeaveCalendar } from '@/src/components/calendar/MonthlyLeaveCalendar';
+import { DayAbsenceModal, DayAbsenceModalProps } from '@/src/components/calendar/DayAbsenceModal';
 import { useEmployees } from '@/src/hooks/useEmployees';
 import { useAllTimeOff } from '@/src/hooks/useAllTimeOff';
+import { useAllCategoryRequests } from '@/src/hooks/useAllCategoryRequests';
+import { useShiftCategories } from '@/src/hooks/useShiftCategories';
 import { useShopSettings } from '@/src/hooks/useShopSettings';
-import { timeOffRepository, shopRepository } from '@/src/db/repositories';
+import { timeOffRepository, categoryRequestRepository, shopRepository } from '@/src/db/repositories';
 import { showAlert } from '@/src/utils/alert';
 import { formatDateLong } from '@/src/utils/date';
 import { strings } from '@/src/i18n/strings';
@@ -25,6 +28,8 @@ export default function LeaveScreen() {
   const isOwner = profile?.role === 'owner';
   const { employees } = useEmployees();
   const { allTimeOff, reload: reloadAllTimeOff } = useAllTimeOff();
+  const { allCategoryRequests, reload: reloadAllCategoryRequests } = useAllCategoryRequests();
+  const { categories } = useShiftCategories();
   const { settings, reload: reloadSettings } = useShopSettings();
   const myEmployeeId = employees.find((e) => e.linkedUserId === session?.user.id)?.id ?? null;
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string | null>(null);
@@ -34,13 +39,35 @@ export default function LeaveScreen() {
   const [month, setMonth] = useState(today.getMonth() + 1);
   const [maxPerDayInput, setMaxPerDayInput] = useState('');
   const [savingSettings, setSavingSettings] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [savingDay, setSavingDay] = useState(false);
 
   const markedDates = useMemo(
     () =>
       new Set(
-        allTimeOff.filter((t) => t.employeeId === effectiveEmployeeId).map((t) => t.date)
+        allTimeOff
+          .filter((t) => t.employeeId === effectiveEmployeeId && !t.startTime)
+          .map((t) => t.date)
       ),
     [allTimeOff, effectiveEmployeeId]
+  );
+
+  const partialDates = useMemo(
+    () =>
+      new Set(
+        allTimeOff
+          .filter((t) => t.employeeId === effectiveEmployeeId && t.startTime)
+          .map((t) => t.date)
+      ),
+    [allTimeOff, effectiveEmployeeId]
+  );
+
+  const categoryRequestDates = useMemo(
+    () =>
+      new Set(
+        allCategoryRequests.filter((r) => r.employeeId === effectiveEmployeeId).map((r) => r.date)
+      ),
+    [allCategoryRequests, effectiveEmployeeId]
   );
 
   const otherCounts = useMemo(() => {
@@ -57,7 +84,12 @@ export default function LeaveScreen() {
     [employees]
   );
 
-  /** Chi è in ferie in ciascun giorno del mese in vista, per mostrare non solo "quanti" ma "chi". */
+  const categoryNameById = useMemo(
+    () => new Map(categories.map((c) => [c.id, c.name])),
+    [categories]
+  );
+
+  /** Chi è assente in ciascun giorno del mese in vista, per mostrare non solo "quanti" ma "chi". */
   const leaveByDay = useMemo(() => {
     const monthPrefix = `${year}-${String(month).padStart(2, '0')}`;
     const map = new Map<string, string[]>();
@@ -65,12 +97,29 @@ export default function LeaveScreen() {
       if (!t.date.startsWith(monthPrefix)) continue;
       const name = employeeNameById.get(t.employeeId);
       if (!name) continue;
+      const label = t.startTime && t.endTime ? `${name} (${t.startTime}-${t.endTime})` : name;
       const list = map.get(t.date) ?? [];
-      list.push(name);
+      list.push(label);
       map.set(t.date, list);
     }
     return [...map.entries()].sort(([a], [b]) => a.localeCompare(b));
   }, [allTimeOff, employeeNameById, year, month]);
+
+  /** Fasce orarie richieste in ciascun giorno del mese in vista. */
+  const categoryRequestsByDay = useMemo(() => {
+    const monthPrefix = `${year}-${String(month).padStart(2, '0')}`;
+    const map = new Map<string, string[]>();
+    for (const r of allCategoryRequests) {
+      if (!r.date.startsWith(monthPrefix)) continue;
+      const name = employeeNameById.get(r.employeeId);
+      const categoryName = categoryNameById.get(r.categoryId);
+      if (!name || !categoryName) continue;
+      const list = map.get(r.date) ?? [];
+      list.push(`${name} (${categoryName})`);
+      map.set(r.date, list);
+    }
+    return [...map.entries()].sort(([a], [b]) => a.localeCompare(b));
+  }, [allCategoryRequests, employeeNameById, categoryNameById, year, month]);
 
   const goToPreviousMonth = () => {
     if (month === 1) {
@@ -90,21 +139,47 @@ export default function LeaveScreen() {
     }
   };
 
-  const handleDayPress = async (date: string) => {
+  const handleDayPress = (date: string) => {
     if (!effectiveEmployeeId) return;
-    const isCurrentlyMarked = markedDates.has(date);
-    if (!isCurrentlyMarked && settings.maxDailyTimeOff !== undefined) {
-      const otherCount = otherCounts[date] ?? 0;
+    setSelectedDate(date);
+  };
+
+  const handleSaveDay: DayAbsenceModalProps['onSave'] = async ({ absence, categoryId }) => {
+    if (!effectiveEmployeeId || !selectedDate) return;
+
+    const wasAbsent = markedDates.has(selectedDate) || partialDates.has(selectedDate);
+    if (!wasAbsent && absence.mode !== 'none' && settings.maxDailyTimeOff !== undefined) {
+      const otherCount = otherCounts[selectedDate] ?? 0;
       if (otherCount >= settings.maxDailyTimeOff) {
         showAlert(
           strings.leave.limitReachedTitle,
-          strings.leave.limitReachedMessage(formatDateLong(date), otherCount, settings.maxDailyTimeOff)
+          strings.leave.limitReachedMessage(formatDateLong(selectedDate), otherCount, settings.maxDailyTimeOff)
         );
         return;
       }
     }
-    await timeOffRepository.toggleTimeOff(effectiveEmployeeId, date);
-    await reloadAllTimeOff();
+
+    setSavingDay(true);
+    try {
+      if (absence.mode === 'none') {
+        await timeOffRepository.removeTimeOff(effectiveEmployeeId, selectedDate);
+      } else if (absence.mode === 'full') {
+        await timeOffRepository.addTimeOff(effectiveEmployeeId, selectedDate);
+      } else {
+        await timeOffRepository.setPermit(effectiveEmployeeId, selectedDate, absence.startTime, absence.endTime);
+      }
+
+      if (categoryId === null) {
+        await categoryRequestRepository.removeCategoryRequest(effectiveEmployeeId, selectedDate);
+      } else {
+        await categoryRequestRepository.setCategoryRequest(effectiveEmployeeId, selectedDate, categoryId);
+      }
+
+      await Promise.all([reloadAllTimeOff(), reloadAllCategoryRequests()]);
+      setSelectedDate(null);
+    } finally {
+      setSavingDay(false);
+    }
   };
 
   const startEditSettings = () => {
@@ -178,20 +253,24 @@ export default function LeaveScreen() {
             <Button label="→" variant="secondary" onPress={goToNextMonth} />
           </View>
 
-          <Text style={styles.hint}>{strings.leave.tapToToggle}</Text>
+          <Text style={styles.hint}>
+            Tocca un giorno per impostare ferie, permesso o una fascia oraria richiesta.
+          </Text>
 
           <MonthlyLeaveCalendar
             year={year}
             month={month}
             markedDates={markedDates}
+            partialDates={partialDates}
+            categoryRequestDates={categoryRequestDates}
             otherCounts={otherCounts}
             maxPerDay={settings.maxDailyTimeOff}
             onDayPress={handleDayPress}
           />
 
-          <Text style={styles.sectionTitle}>Chi è in ferie questo mese</Text>
+          <Text style={styles.sectionTitle}>Chi è assente questo mese</Text>
           {leaveByDay.length === 0 ? (
-            <Text style={styles.hint}>Nessuno è in ferie questo mese.</Text>
+            <Text style={styles.hint}>Nessuno è assente questo mese.</Text>
           ) : (
             leaveByDay.map(([date, names]) => (
               <View key={date} style={styles.leaveDayRow}>
@@ -200,8 +279,33 @@ export default function LeaveScreen() {
               </View>
             ))
           )}
+
+          <Text style={styles.sectionTitle}>Fasce richieste questo mese</Text>
+          {categoryRequestsByDay.length === 0 ? (
+            <Text style={styles.hint}>Nessuna fascia richiesta questo mese.</Text>
+          ) : (
+            categoryRequestsByDay.map(([date, names]) => (
+              <View key={date} style={styles.leaveDayRow}>
+                <Text style={styles.leaveDayDate}>{formatDateLong(date)}</Text>
+                <Text style={styles.leaveDayNames}>{names.join(', ')}</Text>
+              </View>
+            ))
+          )}
         </>
       )}
+
+      <DayAbsenceModal
+        visible={selectedDate !== null}
+        date={selectedDate}
+        currentTimeOff={allTimeOff.find((t) => t.employeeId === effectiveEmployeeId && t.date === selectedDate)}
+        currentCategoryRequest={allCategoryRequests.find(
+          (r) => r.employeeId === effectiveEmployeeId && r.date === selectedDate
+        )}
+        categories={categories}
+        saving={savingDay}
+        onClose={() => setSelectedDate(null)}
+        onSave={handleSaveDay}
+      />
     </ScreenContainer>
   );
 }

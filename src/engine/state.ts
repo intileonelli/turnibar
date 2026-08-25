@@ -1,10 +1,13 @@
-import { Employee, ShiftTemplate, TimeOff, Unavailability, Weekday } from '@/src/models';
+import { CategoryRequest, Employee, ShiftTemplate, TimeOff, Unavailability, Weekday } from '@/src/models';
 import { Slot } from './types';
 
 /** Dati precalcolati dall'input, immutabili durante la risoluzione. */
 export interface SolverContext {
   unavailabilitiesByEmployee: Map<string, Unavailability[]>;
-  timeOffDatesByEmployee: Map<string, Set<string>>;
+  /** Ferie/permessi per dipendente e data (più di una fascia possibile sulla stessa data, in teoria). */
+  timeOffByEmployeeAndDate: Map<string, Map<string, TimeOff[]>>;
+  /** Fascia oraria richiesta dal dipendente per una data specifica (come un turno fisso, ma per un solo giorno). */
+  categoryRequestByEmployeeAndDate: Map<string, Map<string, string>>;
   /** Se un dipendente può avere più di un turno nello stesso giorno (impostazione del negozio). */
   allowMultipleShiftsPerDay: boolean;
   /**
@@ -20,7 +23,8 @@ export function buildSolverContext(
   shiftTemplates: ShiftTemplate[],
   unavailabilities: Unavailability[],
   timeOff: TimeOff[],
-  allowMultipleShiftsPerDay: boolean
+  allowMultipleShiftsPerDay: boolean,
+  categoryRequests: CategoryRequest[] = []
 ): SolverContext {
   const unavailabilitiesByEmployee = new Map<string, Unavailability[]>();
   for (const u of unavailabilities) {
@@ -29,11 +33,20 @@ export function buildSolverContext(
     unavailabilitiesByEmployee.set(u.employeeId, list);
   }
 
-  const timeOffDatesByEmployee = new Map<string, Set<string>>();
+  const timeOffByEmployeeAndDate = new Map<string, Map<string, TimeOff[]>>();
   for (const t of timeOff) {
-    const set = timeOffDatesByEmployee.get(t.employeeId) ?? new Set<string>();
-    set.add(t.date);
-    timeOffDatesByEmployee.set(t.employeeId, set);
+    const byDate = timeOffByEmployeeAndDate.get(t.employeeId) ?? new Map<string, TimeOff[]>();
+    const list = byDate.get(t.date) ?? [];
+    list.push(t);
+    byDate.set(t.date, list);
+    timeOffByEmployeeAndDate.set(t.employeeId, byDate);
+  }
+
+  const categoryRequestByEmployeeAndDate = new Map<string, Map<string, string>>();
+  for (const r of categoryRequests) {
+    const byDate = categoryRequestByEmployeeAndDate.get(r.employeeId) ?? new Map<string, string>();
+    byDate.set(r.date, r.categoryId);
+    categoryRequestByEmployeeAndDate.set(r.employeeId, byDate);
   }
 
   const weekdayByTemplateId = new Map(shiftTemplates.map((t) => [t.id, t.weekday]));
@@ -53,7 +66,8 @@ export function buildSolverContext(
 
   return {
     unavailabilitiesByEmployee,
-    timeOffDatesByEmployee,
+    timeOffByEmployeeAndDate,
+    categoryRequestByEmployeeAndDate,
     allowMultipleShiftsPerDay,
     pinnedTemplateIdsByEmployeeAndWeekday,
   };

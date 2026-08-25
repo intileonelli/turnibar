@@ -301,4 +301,29 @@ describe('validateAssignment', () => {
 
     expect(violations.some((v) => v.type === 'max_preference_shifts')).toBe(false);
   });
+
+  it('un permesso segnala time_off solo se il turno si sovrappone alla fascia indicata', () => {
+    const anna = makeEmployee({ id: 'anna', name: 'Anna', roleId: ROLE_COMMESSO });
+    const permit: TimeOff = { id: 'p1', employeeId: 'anna', date: SLOT.date, startTime: '09:00', endTime: '13:00' };
+
+    const overlapping = validateAssignment({
+      employee: anna,
+      slot: SLOT, // 09:00-13:00, si sovrappone al permesso
+      otherAssignmentsForEmployee: [],
+      unavailabilities: [],
+      timeOff: [permit],
+      allowMultipleShiftsPerDay: true,
+    });
+    expect(overlapping.some((v) => v.type === 'time_off')).toBe(true);
+
+    const nonOverlapping = validateAssignment({
+      employee: anna,
+      slot: { ...SLOT, startTime: '18:00', endTime: '22:00' }, // fuori dalla fascia del permesso
+      otherAssignmentsForEmployee: [],
+      unavailabilities: [],
+      timeOff: [permit],
+      allowMultipleShiftsPerDay: true,
+    });
+    expect(nonOverlapping.some((v) => v.type === 'time_off')).toBe(false);
+  });
 });

@@ -69,7 +69,8 @@ export function generateSchedule(input: EngineInput, roles: Role[] = []): Schedu
     input.shiftTemplates,
     input.unavailabilities,
     input.timeOff,
-    input.allowMultipleShiftsPerDay
+    input.allowMultipleShiftsPerDay,
+    input.categoryRequests ?? []
   );
 
   const { state, unresolvedSlots } = solveSchedule(slots, activeEmployees, context);
