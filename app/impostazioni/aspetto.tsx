@@ -66,11 +66,11 @@ export default function AppearanceScreen() {
   const currentFontScale = profile?.fontScale ?? 1;
   const fontScaleSliderValue = (currentFontScale - MIN_FONT_SCALE) / (MAX_FONT_SCALE - MIN_FONT_SCALE);
 
-  const previewFontScale = (sliderValue: number) => {
-    applyFontScale(MIN_FONT_SCALE + sliderValue * (MAX_FONT_SCALE - MIN_FONT_SCALE));
-    bumpTheme();
-  };
-
+  // A differenza degli altri cursori, qui NON si applica lo zoom durante il trascinamento: lo
+  // zoom cambierebbe le dimensioni della schermata (quindi anche del cursore stesso) mentre lo
+  // si trascina, creando un cortocircuito che lo rende pressoché impossibile da usare. Il
+  // cursore si sposta comunque fluido (gestito internamente da Slider): il testo cambia solo al
+  // rilascio.
   const commitFontScale = async (sliderValue: number) => {
     const scale = MIN_FONT_SCALE + sliderValue * (MAX_FONT_SCALE - MIN_FONT_SCALE);
     applyFontScale(scale);
@@ -160,7 +160,7 @@ export default function AppearanceScreen() {
         <View style={styles.fontScaleRow}>
           <Slider
             initialValue={Math.max(0, Math.min(1, fontScaleSliderValue))}
-            onChange={previewFontScale}
+            onChange={() => {}}
             onChangeComplete={commitFontScale}
           />
         </View>

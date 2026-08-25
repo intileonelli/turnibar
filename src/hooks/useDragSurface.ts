@@ -1,5 +1,6 @@
 import { useRef } from 'react';
-import { GestureResponderEvent, PanResponder, View } from 'react-native';
+import { GestureResponderEvent, PanResponder, Platform, View } from 'react-native';
+import { typographyState } from '@/src/components/shared/typography';
 
 interface UseDragSurfaceOptions {
   /** Posizione del tocco relativa all'angolo in alto a sinistra della superficie, in pixel. */
@@ -12,18 +13,23 @@ interface UseDragSurfaceOptions {
  * `locationY` dell'evento, che react-native-web calcola come `clientX/clientY` meno il
  * `getBoundingClientRect` dell'elemento a cui è agganciato il gesto (ricalcolato ad ogni
  * evento) — coordinate quindi già nello stesso sistema di riferimento, corrette a prescindere
- * da scroll della pagina o zoom del testo. Un tentativo precedente combinava `pageX/pageY`
- * (relative all'intera pagina) con `measureInWindow` (relativo al solo viewport): la differenza
- * tra i due sistemi produceva uno scarto tra il punto toccato e il colore selezionato. Rivendica
- * il gesto sia in fase di cattura che di bubbling per evitare che uno ScrollView antenato lo
- * intercetti.
+ * da scroll della pagina. Un tentativo precedente combinava `pageX/pageY` (relative all'intera
+ * pagina) con `measureInWindow` (relativo al solo viewport): la differenza tra i due sistemi
+ * produceva uno scarto tra il punto toccato e il colore selezionato.
+ *
+ * `locationX/Y` sono però misurate nei pixel "renderizzati": con lo zoom CSS della dimensione
+ * testo attivo (vedi typography.ts), l'elemento occupa fisicamente `size * scale` pixel pur
+ * restando `size` nei calcoli interni dei componenti (raggio della ruota, larghezza dello
+ * slider) — senza dividere per lo zoom corrente, il punto scelto si allontana dal tocco in modo
+ * proporzionale allo zoom (più si ingrandisce il testo, più il cursore diventa impreciso).
  */
 export function useDragSurface({ onMove, onRelease }: UseDragSurfaceOptions) {
   const containerRef = useRef<View>(null);
 
   const handleMove = (evt: GestureResponderEvent) => {
     const { locationX, locationY } = evt.nativeEvent;
-    onMove(locationX, locationY);
+    const scale = Platform.OS === 'web' ? typographyState.scale || 1 : 1;
+    onMove(locationX / scale, locationY / scale);
   };
 
   const panResponder = useRef(
