@@ -1,19 +1,5 @@
 import { useRef } from 'react';
-import { GestureResponderEvent, PanResponder, Platform, View } from 'react-native';
-
-/**
- * `measureInWindow` (usato per l'origine della superficie) restituisce coordinate relative al
- * VIEWPORT (getBoundingClientRect), mentre `pageX`/`pageY` dell'evento sono relative all'intera
- * PAGINA (includono lo scroll): se la pagina è scrollata, sottrarre l'una dall'altra senza
- * correggere introduce uno scarto costante pari allo scroll corrente, motivo per cui il pallino
- * finiva lontano dal punto toccato. Va sommato lo scroll corrente per riportarle allo stesso
- * sistema di riferimento (vedi commento di react-native-web su pageXOffset/pageYOffset in
- * Touchable). Su nativo lo scroll della pagina non esiste, quindi la correzione è 0.
- */
-function pageScrollOffset(): { x: number; y: number } {
-  if (Platform.OS !== 'web' || typeof window === 'undefined') return { x: 0, y: 0 };
-  return { x: window.scrollX ?? 0, y: window.scrollY ?? 0 };
-}
+import { GestureResponderEvent, PanResponder, View } from 'react-native';
 
 interface UseDragSurfaceOptions {
   /** Posizione del tocco relativa all'angolo in alto a sinistra della superficie, in pixel. */
@@ -22,27 +8,22 @@ interface UseDragSurfaceOptions {
 }
 
 /**
- * Gestione robusta del trascinamento (usata da ColorWheelPicker e Slider): misura la posizione
- * assoluta della superficie ad ogni inizio di trascinamento (measureInWindow) invece di fidarsi
- * di locationX/locationY dell'evento, che su web possono restare bloccati al punto di partenza
- * durante il movimento del mouse. Rivendica il gesto sia in fase di cattura che di bubbling per
- * evitare che uno ScrollView antenato lo intercetti.
+ * Gestione robusta del trascinamento (usata da ColorWheelPicker e Slider): usa `locationX`/
+ * `locationY` dell'evento, che react-native-web calcola come `clientX/clientY` meno il
+ * `getBoundingClientRect` dell'elemento a cui è agganciato il gesto (ricalcolato ad ogni
+ * evento) — coordinate quindi già nello stesso sistema di riferimento, corrette a prescindere
+ * da scroll della pagina o zoom del testo. Un tentativo precedente combinava `pageX/pageY`
+ * (relative all'intera pagina) con `measureInWindow` (relativo al solo viewport): la differenza
+ * tra i due sistemi produceva uno scarto tra il punto toccato e il colore selezionato. Rivendica
+ * il gesto sia in fase di cattura che di bubbling per evitare che uno ScrollView antenato lo
+ * intercetti.
  */
 export function useDragSurface({ onMove, onRelease }: UseDragSurfaceOptions) {
   const containerRef = useRef<View>(null);
-  const originRef = useRef({ x: 0, y: 0 });
 
   const handleMove = (evt: GestureResponderEvent) => {
-    const { pageX, pageY } = evt.nativeEvent;
-    const scroll = pageScrollOffset();
-    onMove(pageX - scroll.x - originRef.current.x, pageY - scroll.y - originRef.current.y);
-  };
-
-  const handleGrant = (evt: GestureResponderEvent) => {
-    containerRef.current?.measureInWindow((x, y) => {
-      originRef.current = { x, y };
-      handleMove(evt);
-    });
+    const { locationX, locationY } = evt.nativeEvent;
+    onMove(locationX, locationY);
   };
 
   const panResponder = useRef(
@@ -51,7 +32,7 @@ export function useDragSurface({ onMove, onRelease }: UseDragSurfaceOptions) {
       onStartShouldSetPanResponderCapture: () => true,
       onMoveShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponderCapture: () => true,
-      onPanResponderGrant: handleGrant,
+      onPanResponderGrant: handleMove,
       onPanResponderMove: handleMove,
       onPanResponderRelease: () => onRelease?.(),
       onPanResponderTerminate: () => onRelease?.(),
