@@ -28,9 +28,6 @@ export const ROLE_COLOR_PALETTE = [
   '#0D9488',
 ];
 
-/** Palette curata per i colori personalizzabili dell'app (principale/secondario): stessa di ROLE_COLOR_PALETTE, riletta per chiarezza. */
-export const THEME_COLOR_PALETTE = ROLE_COLOR_PALETTE;
-
 /** Mescola un colore con il bianco per ottenere una tinta chiara e leggibile (es. sfondo di badge/pulsanti secondari). */
 function lightTint(hex: string, whiteRatio = 0.88): string {
   const normalized = hex.replace('#', '');
@@ -45,15 +42,20 @@ function lightTint(hex: string, whiteRatio = 0.88): string {
 const DEFAULT_PRIMARY = '#4F46E5';
 const DEFAULT_ACCENT = '#4F46E5';
 
-/** Id dello sfondo decorativo attualmente selezionato dall'azienda (mutato da applyTheme). */
-export const themeState = { backgroundId: 'none' };
+/** Posizione e colore dello sfondo decorativo attualmente selezionati dall'azienda (mutati da applyTheme). */
+export const themeState = { backgroundId: 'none', backgroundColor: DEFAULT_PRIMARY };
 
 /**
  * Applica i colori/sfondo scelti dall'azienda, mutando l'oggetto `colors` condiviso (importato
  * per riferimento in tutta l'app): non serve un Context/hook in ogni file, basta che qualcosa
  * a monte forzi un nuovo render dopo la chiamata (vedi src/store/themeStore.ts).
  */
-export function applyTheme(settings: { primaryColor?: string; accentColor?: string; backgroundId?: string }): void {
+export function applyTheme(settings: {
+  primaryColor?: string;
+  accentColor?: string;
+  backgroundId?: string;
+  backgroundColor?: string;
+}): void {
   const primary = settings.primaryColor ?? DEFAULT_PRIMARY;
   const accent = settings.accentColor ?? DEFAULT_ACCENT;
   colors.primary = primary;
@@ -61,4 +63,5 @@ export function applyTheme(settings: { primaryColor?: string; accentColor?: stri
   colors.accent = accent;
   colors.accentMuted = lightTint(accent);
   themeState.backgroundId = settings.backgroundId ?? 'none';
+  themeState.backgroundColor = settings.backgroundColor ?? primary;
 }

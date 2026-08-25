@@ -1,7 +1,8 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { ScreenContainer } from '@/src/components/shared/ScreenContainer';
 import { Card } from '@/src/components/shared/Card';
-import { colors, THEME_COLOR_PALETTE, applyTheme } from '@/src/components/shared/colors';
+import { ColorWheelPicker } from '@/src/components/shared/ColorWheelPicker';
+import { colors, applyTheme } from '@/src/components/shared/colors';
 import { useShopSettings } from '@/src/hooks/useShopSettings';
 import { shopRepository } from '@/src/db/repositories';
 import { ShopSettings } from '@/src/models';
@@ -15,11 +16,22 @@ const BACKGROUND_OPTIONS: { id: string; label: string }[] = [
   { id: 'corners', label: 'Entrambi gli angoli' },
 ];
 
+const DEFAULT_COLOR = '#4F46E5';
+
 export default function AppearanceScreen() {
   const { settings, reload: reloadSettings } = useShopSettings();
   const bumpTheme = useThemeStore((s) => s.bump);
 
-  const applyAndSaveTheme = async (patch: Partial<ShopSettings>) => {
+  // Anteprima immediata mentre si trascina sulla ruota: aggiorna solo lo stato locale del tema,
+  // senza scrivere sul database (verrebbe chiamato troppo spesso durante il trascinamento).
+  const previewTheme = (patch: Partial<ShopSettings>) => {
+    applyTheme({ ...settings, ...patch });
+    bumpTheme();
+  };
+
+  // Salva sul database: chiamato al rilascio del dito/mouse, o per le scelte "a tocco singolo"
+  // come la posizione dello sfondo.
+  const commitTheme = async (patch: Partial<ShopSettings>) => {
     const next = { ...settings, ...patch };
     try {
       await shopRepository.updateShopSettings(next);
@@ -40,49 +52,38 @@ export default function AppearanceScreen() {
 
       <Card>
         <Text style={styles.label}>Colore principale</Text>
-        <View style={styles.colorsRow}>
-          {THEME_COLOR_PALETTE.map((swatch) => {
-            const selected = (settings.primaryColor ?? THEME_COLOR_PALETTE[0]) === swatch;
-            return (
-              <Pressable
-                key={swatch}
-                onPress={() => applyAndSaveTheme({ primaryColor: swatch })}
-                style={[
-                  styles.colorSwatch,
-                  { backgroundColor: swatch },
-                  selected && { borderWidth: 3, borderColor: colors.text },
-                ]}
-              />
-            );
-          })}
-        </View>
+        <ColorWheelPicker
+          initialValue={settings.primaryColor ?? DEFAULT_COLOR}
+          onChange={(hex) => previewTheme({ primaryColor: hex })}
+          onChangeComplete={(hex) => commitTheme({ primaryColor: hex })}
+        />
+      </Card>
 
+      <Card>
         <Text style={styles.label}>Colore secondario</Text>
-        <View style={styles.colorsRow}>
-          {THEME_COLOR_PALETTE.map((swatch) => {
-            const selected = (settings.accentColor ?? THEME_COLOR_PALETTE[0]) === swatch;
-            return (
-              <Pressable
-                key={swatch}
-                onPress={() => applyAndSaveTheme({ accentColor: swatch })}
-                style={[
-                  styles.colorSwatch,
-                  { backgroundColor: swatch },
-                  selected && { borderWidth: 3, borderColor: colors.text },
-                ]}
-              />
-            );
-          })}
-        </View>
+        <ColorWheelPicker
+          initialValue={settings.accentColor ?? DEFAULT_COLOR}
+          onChange={(hex) => previewTheme({ accentColor: hex })}
+          onChangeComplete={(hex) => commitTheme({ accentColor: hex })}
+        />
+      </Card>
 
-        <Text style={styles.label}>Sfondo</Text>
+      <Card>
+        <Text style={styles.label}>Colore sfondo</Text>
+        <ColorWheelPicker
+          initialValue={settings.backgroundColor ?? settings.primaryColor ?? DEFAULT_COLOR}
+          onChange={(hex) => previewTheme({ backgroundColor: hex })}
+          onChangeComplete={(hex) => commitTheme({ backgroundColor: hex })}
+        />
+
+        <Text style={[styles.label, styles.positionLabel]}>Posizione sfondo</Text>
         <View style={styles.chipsRow}>
           {BACKGROUND_OPTIONS.map((option) => {
             const selected = (settings.backgroundId ?? 'none') === option.id;
             return (
               <Pressable
                 key={option.id}
-                onPress={() => applyAndSaveTheme({ backgroundId: option.id })}
+                onPress={() => commitTheme({ backgroundId: option.id })}
                 style={[
                   styles.backgroundOption,
                   { backgroundColor: selected ? colors.primary : colors.surface, borderColor: colors.border },
@@ -110,19 +111,10 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     color: colors.textMuted,
-    marginBottom: 8,
+    marginBottom: 12,
   },
-  colorsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginBottom: 16,
-  },
-  colorSwatch: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    marginRight: 10,
-    marginBottom: 10,
+  positionLabel: {
+    marginTop: 20,
   },
   chipsRow: {
     flexDirection: 'row',

@@ -1,10 +1,8 @@
 import { StyleSheet, View } from 'react-native';
-import { colors } from './colors';
 
 const BLOB_SIZE = 320;
 
 interface Blob {
-  color: string;
   top?: number;
   bottom?: number;
   left?: number;
@@ -12,39 +10,39 @@ interface Blob {
 }
 
 /** Sfondi predefiniti: macchie di colore molto sfumate/poco visibili in uno o due angoli, mai foto. */
-function blobsFor(backgroundId: string): Blob[] {
+function blobPositionsFor(backgroundId: string): Blob[] {
   switch (backgroundId) {
     case 'top-right':
-      return [{ color: colors.primary, top: -BLOB_SIZE * 0.4, right: -BLOB_SIZE * 0.4 }];
+      return [{ top: -BLOB_SIZE * 0.4, right: -BLOB_SIZE * 0.4 }];
     case 'bottom-left':
-      return [{ color: colors.accent, bottom: -BLOB_SIZE * 0.4, left: -BLOB_SIZE * 0.4 }];
+      return [{ bottom: -BLOB_SIZE * 0.4, left: -BLOB_SIZE * 0.4 }];
     case 'corners':
       return [
-        { color: colors.accent, top: -BLOB_SIZE * 0.45, left: -BLOB_SIZE * 0.45 },
-        { color: colors.primary, bottom: -BLOB_SIZE * 0.45, right: -BLOB_SIZE * 0.45 },
+        { top: -BLOB_SIZE * 0.45, left: -BLOB_SIZE * 0.45 },
+        { bottom: -BLOB_SIZE * 0.45, right: -BLOB_SIZE * 0.45 },
       ];
     default:
       return [];
   }
 }
 
-export function ScreenBackground({ backgroundId }: { backgroundId: string }) {
-  const blobs = blobsFor(backgroundId);
-  if (blobs.length === 0) return null;
+export function ScreenBackground({ backgroundId, color }: { backgroundId: string; color: string }) {
+  const positions = blobPositionsFor(backgroundId);
+  if (positions.length === 0) return null;
 
   return (
     <View style={styles.container} pointerEvents="none">
-      {blobs.map((blob, i) => (
+      {positions.map((position, i) => (
         <View
           key={i}
           style={[
             styles.blob,
             {
-              backgroundColor: blob.color,
-              top: blob.top,
-              bottom: blob.bottom,
-              left: blob.left,
-              right: blob.right,
+              backgroundColor: color,
+              top: position.top,
+              bottom: position.bottom,
+              left: position.left,
+              right: position.right,
             },
           ]}
         />

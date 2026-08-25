@@ -7,6 +7,7 @@ import { Chip } from '@/src/components/shared/Chip';
 import { Button } from '@/src/components/shared/Button';
 import { SwitchRow } from '@/src/components/shared/SwitchRow';
 import { Card } from '@/src/components/shared/Card';
+import { ColorWheelPicker } from '@/src/components/shared/ColorWheelPicker';
 import { colors } from '@/src/components/shared/colors';
 import { useRoles } from '@/src/hooks/useRoles';
 import { useShiftTemplates } from '@/src/hooks/useShiftTemplates';
@@ -41,6 +42,7 @@ export default function EditEmployeeScreen() {
   const [saving, setSaving] = useState(false);
 
   const [name, setName] = useState('');
+  const [employeeColor, setEmployeeColor] = useState('#4F46E5');
   const [roleId, setRoleId] = useState<string | null>(null);
   const [secondaryRoleId, setSecondaryRoleId] = useState<string | null>(null);
   const [weeklyContractHours, setWeeklyContractHours] = useState('');
@@ -68,6 +70,7 @@ export default function EditEmployeeScreen() {
     if (found) {
       setEmployee(found);
       setName(found.name);
+      setEmployeeColor(found.color);
       setRoleId(found.roleId);
       setSecondaryRoleId(found.secondaryRoleId ?? null);
       setWeeklyContractHours(found.weeklyContractHours !== undefined ? String(found.weeklyContractHours) : '');
@@ -170,6 +173,7 @@ export default function EditEmployeeScreen() {
       await employeeRepository.updateEmployee({
         ...employee,
         name: name.trim(),
+        color: employeeColor,
         roleId,
         secondaryRoleId: secondaryRoleId ?? undefined,
         weeklyContractHours: contractHours,
@@ -237,6 +241,19 @@ export default function EditEmployeeScreen() {
   return (
     <ScreenContainer>
       <TextField label={strings.employees.name} value={name} onChangeText={setName} />
+
+      <Text style={styles.label}>Colore</Text>
+      <Text style={[styles.hint, styles.hintNoOffset]}>
+        Usato per distinguere questo dipendente nel calendario turni.
+      </Text>
+      <View style={styles.colorPickerWrapper}>
+        <ColorWheelPicker
+          initialValue={employeeColor}
+          onChange={setEmployeeColor}
+          onChangeComplete={setEmployeeColor}
+          size={160}
+        />
+      </View>
 
       <Text style={styles.label}>{strings.employees.role}</Text>
       <View style={styles.chipsRow}>
@@ -487,6 +504,13 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     marginTop: -12,
     marginBottom: 16,
+  },
+  hintNoOffset: {
+    marginTop: 0,
+    marginBottom: 16,
+  },
+  colorPickerWrapper: {
+    marginBottom: 20,
   },
   chipsRow: {
     flexDirection: 'row',

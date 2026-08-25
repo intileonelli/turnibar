@@ -48,6 +48,7 @@ export async function getShopSettings(): Promise<ShopSettings> {
         primary_color: string | null;
         accent_color: string | null;
         background_id: string | null;
+        background_color: string | null;
       }
     | undefined;
   return {
@@ -56,6 +57,7 @@ export async function getShopSettings(): Promise<ShopSettings> {
     primaryColor: row?.primary_color ?? undefined,
     accentColor: row?.accent_color ?? undefined,
     backgroundId: row?.background_id ?? undefined,
+    backgroundColor: row?.background_color ?? undefined,
   };
 }
 
@@ -66,6 +68,7 @@ export async function updateShopSettings(settings: ShopSettings): Promise<void> 
     p_primary_color: settings.primaryColor ?? null,
     p_accent_color: settings.accentColor ?? null,
     p_background_id: settings.backgroundId ?? null,
+    p_background_color: settings.backgroundColor ?? null,
   });
   if (error) throw error;
 }

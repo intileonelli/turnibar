@@ -41,10 +41,12 @@ export interface ShopSettings {
   maxDailyTimeOff?: number;
   /** Se un dipendente può essere assegnato a più di un turno nello stesso giorno (turni spezzati). */
   allowMultipleShiftsPerDay: boolean;
-  /** Colore principale dell'app (pulsanti, elementi attivi), scelto da una palette curata. Non impostato = colore di default. */
+  /** Colore principale dell'app (pulsanti, elementi attivi), qualsiasi colore. Non impostato = colore di default. */
   primaryColor?: string;
-  /** Colore secondario/accento dell'app, scelto da una palette curata. Non impostato = colore di default. */
+  /** Colore secondario/accento dell'app, qualsiasi colore. Non impostato = colore di default. */
   accentColor?: string;
-  /** Sfondo decorativo predefinito delle schermate. Non impostato = nessuno sfondo. */
+  /** Posizione dello sfondo decorativo delle schermate. Non impostato = nessuno sfondo. */
   backgroundId?: string;
+  /** Colore delle macchie decorative dello sfondo, qualsiasi colore. Non impostato = usa il colore principale. */
+  backgroundColor?: string;
 }
