@@ -41,9 +41,10 @@ function lightTint(hex: string, whiteRatio = 0.88): string {
 
 const DEFAULT_PRIMARY = '#4F46E5';
 const DEFAULT_ACCENT = '#4F46E5';
+const DEFAULT_TEXT = '#0F172A';
 
-/** Posizione e colore dello sfondo decorativo attualmente selezionati dall'azienda (mutati da applyTheme). */
-export const themeState = { backgroundId: 'none', backgroundColor: DEFAULT_PRIMARY };
+/** Colore e opacità dello sfondo decorativo attualmente selezionati dall'azienda (mutati da applyTheme). */
+export const themeState = { backgroundColor: DEFAULT_PRIMARY, backgroundOpacity: 0 };
 
 /**
  * Applica i colori/sfondo scelti dall'azienda, mutando l'oggetto `colors` condiviso (importato
@@ -53,8 +54,8 @@ export const themeState = { backgroundId: 'none', backgroundColor: DEFAULT_PRIMA
 export function applyTheme(settings: {
   primaryColor?: string;
   accentColor?: string;
-  backgroundId?: string;
   backgroundColor?: string;
+  backgroundOpacity?: number;
 }): void {
   const primary = settings.primaryColor ?? DEFAULT_PRIMARY;
   const accent = settings.accentColor ?? DEFAULT_ACCENT;
@@ -62,6 +63,20 @@ export function applyTheme(settings: {
   colors.primaryMuted = lightTint(primary);
   colors.accent = accent;
   colors.accentMuted = lightTint(accent);
-  themeState.backgroundId = settings.backgroundId ?? 'none';
   themeState.backgroundColor = settings.backgroundColor ?? primary;
+  themeState.backgroundOpacity = settings.backgroundOpacity ?? 0;
+}
+
+/**
+ * Applica il colore del testo scelto personalmente da chi è collegato (impostazione personale,
+ * non dell'azienda): a differenza dei colori dell'azienda, molti componenti condivisi leggono
+ * `colors.text`/`colors.textMuted` dentro StyleSheet.create valutati una sola volta, quindi il
+ * cambiamento richiede un ricaricamento della pagina per essere visibile ovunque in modo
+ * affidabile (vedi src/hooks/useFontSettings.ts).
+ */
+export function applyFontColor(hex: string | undefined): void {
+  const text = hex ?? DEFAULT_TEXT;
+  colors.text = text;
+  // Testo "attenuato": stesso colore scelto, con trasparenza (formato #RRGGBBAA supportato da RN).
+  colors.textMuted = `${text}AA`;
 }

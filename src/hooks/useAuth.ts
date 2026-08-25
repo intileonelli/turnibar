@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Session } from '@supabase/supabase-js';
 import { supabase } from '@/src/lib/supabase';
+import { applyFontColor } from '@/src/components/shared/colors';
+import { applyFontScale } from '@/src/components/shared/typography';
 
 export type UserRole = 'owner' | 'employee';
 
@@ -9,6 +11,10 @@ export interface Profile {
   companyId: string;
   role: UserRole;
   fullName: string;
+  /** Dimensione del testo scelta personalmente (1 = normale), per chi ha bisogno di caratteri più grandi. */
+  fontScale: number;
+  /** Colore del testo scelto personalmente (bianco/nero/grigio). Non impostato = colore di default. */
+  fontColor?: string;
 }
 
 export function useAuth() {
@@ -20,12 +26,23 @@ export function useAuth() {
   const loadProfile = useCallback(async (userId: string) => {
     const { data } = await supabase
       .from('profiles')
-      .select('id, company_id, role, full_name')
+      .select('id, company_id, role, full_name, font_scale, font_color')
       .eq('id', userId)
       .maybeSingle();
+    // Le impostazioni di lettura personali si applicano non appena si conosce il profilo, prima
+    // ancora che l'app vera e propria venga mostrata.
+    applyFontScale(data?.font_scale ?? undefined);
+    applyFontColor(data?.font_color ?? undefined);
     setProfile(
       data
-        ? { id: data.id, companyId: data.company_id, role: data.role, fullName: data.full_name }
+        ? {
+            id: data.id,
+            companyId: data.company_id,
+            role: data.role,
+            fullName: data.full_name,
+            fontScale: data.font_scale ?? 1,
+            fontColor: data.font_color ?? undefined,
+          }
         : null
     );
   }, []);

@@ -13,6 +13,12 @@ export default function SettingsHubScreen() {
     <ScreenContainer>
       <Button label="Cambia password" variant="secondary" onPress={() => router.push('/impostazioni/cambia-password')} />
       <View style={styles.spacer} />
+      <Button
+        label="Personalizzazione"
+        variant="secondary"
+        onPress={() => router.push('/impostazioni/aspetto')}
+      />
+      <View style={styles.spacer} />
 
       {isOwner && (
         <>
@@ -20,12 +26,6 @@ export default function SettingsHubScreen() {
             label="Accessi dipendenti"
             variant="secondary"
             onPress={() => router.push('/impostazioni/accessi')}
-          />
-          <View style={styles.spacer} />
-          <Button
-            label="Personalizzazione"
-            variant="secondary"
-            onPress={() => router.push('/impostazioni/aspetto')}
           />
           <View style={styles.spacer} />
           <Button

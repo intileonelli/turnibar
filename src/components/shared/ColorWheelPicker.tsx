@@ -1,7 +1,8 @@
 import { useMemo, useRef, useState } from 'react';
-import { GestureResponderEvent, Image, PanResponder, StyleSheet, View } from 'react-native';
+import { Image, StyleSheet, View } from 'react-native';
 import { colors } from './colors';
 import { hexToHsv, hsvToHex } from '@/src/utils/color';
+import { useDragSurface } from '@/src/hooks/useDragSurface';
 
 const WHEEL_IMAGE = require('@/assets/color-wheel.png');
 
@@ -22,10 +23,9 @@ export function ColorWheelPicker({ initialValue, onChange, onChangeComplete, siz
   const hsvRef = useRef(hsv);
   const radius = size / 2;
 
-  const updateFromWheelTouch = (evt: GestureResponderEvent) => {
-    const { locationX, locationY } = evt.nativeEvent;
-    const dx = locationX - radius;
-    const dy = locationY - radius;
+  const updateFromWheel = (x: number, y: number) => {
+    const dx = x - radius;
+    const dy = y - radius;
     const dist = Math.min(Math.sqrt(dx * dx + dy * dy), radius);
     let hue = (Math.atan2(dy, dx) * 180) / Math.PI;
     if (hue < 0) hue += 360;
@@ -36,37 +36,24 @@ export function ColorWheelPicker({ initialValue, onChange, onChangeComplete, siz
     onChange(hsvToHex(next));
   };
 
-  const wheelPanResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: () => true,
-      onPanResponderGrant: updateFromWheelTouch,
-      onPanResponderMove: updateFromWheelTouch,
-      onPanResponderRelease: () => onChangeComplete(hsvToHex(hsvRef.current)),
-      onPanResponderTerminate: () => onChangeComplete(hsvToHex(hsvRef.current)),
-    })
-  ).current;
+  const wheelDrag = useDragSurface({
+    onMove: updateFromWheel,
+    onRelease: () => onChangeComplete(hsvToHex(hsvRef.current)),
+  });
 
   const trackWidth = size;
-  const updateFromBrightnessTouch = (evt: GestureResponderEvent) => {
-    const { locationX } = evt.nativeEvent;
-    const v = Math.max(0, Math.min(1, locationX / trackWidth));
+  const updateFromBrightness = (x: number) => {
+    const v = Math.max(0, Math.min(1, x / trackWidth));
     const next = { ...hsvRef.current, v };
     hsvRef.current = next;
     setHsv(next);
     onChange(hsvToHex(next));
   };
 
-  const brightnessPanResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: () => true,
-      onPanResponderGrant: updateFromBrightnessTouch,
-      onPanResponderMove: updateFromBrightnessTouch,
-      onPanResponderRelease: () => onChangeComplete(hsvToHex(hsvRef.current)),
-      onPanResponderTerminate: () => onChangeComplete(hsvToHex(hsvRef.current)),
-    })
-  ).current;
+  const brightnessDrag = useDragSurface({
+    onMove: updateFromBrightness,
+    onRelease: () => onChangeComplete(hsvToHex(hsvRef.current)),
+  });
 
   const indicatorAngleRad = (hsv.h * Math.PI) / 180;
   const indicatorDist = hsv.s * radius;
@@ -87,20 +74,22 @@ export function ColorWheelPicker({ initialValue, onChange, onChangeComplete, siz
 
   return (
     <View>
-      <View style={{ width: size, height: size }}>
+      <View ref={wheelDrag.containerRef} style={{ width: size, height: size }} {...wheelDrag.panHandlers}>
         <Image source={WHEEL_IMAGE} style={{ width: size, height: size }} resizeMode="contain" />
-        <View style={StyleSheet.absoluteFill} {...wheelPanResponder.panHandlers}>
-          <View
-            pointerEvents="none"
-            style={[
-              styles.wheelIndicator,
-              { left: indicatorX - 10, top: indicatorY - 10, backgroundColor: currentHex },
-            ]}
-          />
-        </View>
+        <View
+          pointerEvents="none"
+          style={[
+            styles.wheelIndicator,
+            { left: indicatorX - 10, top: indicatorY - 10, backgroundColor: currentHex },
+          ]}
+        />
       </View>
 
-      <View style={[styles.brightnessTrack, { width: trackWidth }]} {...brightnessPanResponder.panHandlers}>
+      <View
+        ref={brightnessDrag.containerRef}
+        style={[styles.brightnessTrack, { width: trackWidth }]}
+        {...brightnessDrag.panHandlers}
+      >
         {brightnessSegments.map((segment, i) => (
           <View
             key={i}

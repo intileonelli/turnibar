@@ -1,36 +1,43 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Platform, StyleSheet, Text, View } from 'react-native';
 import { ScreenContainer } from '@/src/components/shared/ScreenContainer';
 import { Card } from '@/src/components/shared/Card';
+import { Chip } from '@/src/components/shared/Chip';
 import { ColorWheelPicker } from '@/src/components/shared/ColorWheelPicker';
-import { colors, applyTheme } from '@/src/components/shared/colors';
+import { Slider } from '@/src/components/shared/Slider';
+import { colors, applyTheme, applyFontColor } from '@/src/components/shared/colors';
+import { applyFontScale } from '@/src/components/shared/typography';
 import { useShopSettings } from '@/src/hooks/useShopSettings';
-import { shopRepository } from '@/src/db/repositories';
+import { shopRepository, membershipRepository } from '@/src/db/repositories';
 import { ShopSettings } from '@/src/models';
 import { showAlert } from '@/src/utils/alert';
 import { useThemeStore } from '@/src/store/themeStore';
-
-const BACKGROUND_OPTIONS: { id: string; label: string }[] = [
-  { id: 'none', label: 'Nessuno' },
-  { id: 'top-right', label: 'In alto a destra' },
-  { id: 'bottom-left', label: 'In basso a sinistra' },
-  { id: 'corners', label: 'Entrambi gli angoli' },
-];
+import { useCurrentAuth } from '@/src/context/AuthContext';
 
 const DEFAULT_COLOR = '#4F46E5';
+const MIN_FONT_SCALE = 0.85;
+const MAX_FONT_SCALE = 1.5;
+
+const FONT_COLOR_OPTIONS: { label: string; hex: string }[] = [
+  { label: 'Nero', hex: '#0F172A' },
+  { label: 'Grigio', hex: '#64748B' },
+  { label: 'Bianco', hex: '#FFFFFF' },
+];
 
 export default function AppearanceScreen() {
+  const { profile, reloadProfile } = useCurrentAuth();
+  const isOwner = profile?.role === 'owner';
   const { settings, reload: reloadSettings } = useShopSettings();
   const bumpTheme = useThemeStore((s) => s.bump);
 
-  // Anteprima immediata mentre si trascina sulla ruota: aggiorna solo lo stato locale del tema,
-  // senza scrivere sul database (verrebbe chiamato troppo spesso durante il trascinamento).
+  // Anteprima immediata mentre si trascina sulla ruota/sul cursore: aggiorna solo lo stato
+  // locale del tema, senza scrivere sul database (verrebbe chiamato troppo spesso durante il
+  // trascinamento).
   const previewTheme = (patch: Partial<ShopSettings>) => {
     applyTheme({ ...settings, ...patch });
     bumpTheme();
   };
 
-  // Salva sul database: chiamato al rilascio del dito/mouse, o per le scelte "a tocco singolo"
-  // come la posizione dello sfondo.
+  // Salva sul database: chiamato al rilascio del dito/mouse.
   const commitTheme = async (patch: Partial<ShopSettings>) => {
     const next = { ...settings, ...patch };
     try {
@@ -43,58 +50,122 @@ export default function AppearanceScreen() {
     }
   };
 
+  const currentFontScale = profile?.fontScale ?? 1;
+  const fontScaleSliderValue = (currentFontScale - MIN_FONT_SCALE) / (MAX_FONT_SCALE - MIN_FONT_SCALE);
+
+  const previewFontScale = (sliderValue: number) => {
+    applyFontScale(MIN_FONT_SCALE + sliderValue * (MAX_FONT_SCALE - MIN_FONT_SCALE));
+    bumpTheme();
+  };
+
+  const commitFontScale = async (sliderValue: number) => {
+    const scale = MIN_FONT_SCALE + sliderValue * (MAX_FONT_SCALE - MIN_FONT_SCALE);
+    applyFontScale(scale);
+    bumpTheme();
+    try {
+      await membershipRepository.updateOwnFontSettings(scale, profile?.fontColor);
+      await reloadProfile();
+    } catch (err) {
+      showAlert('Errore', err instanceof Error ? err.message : String(err));
+    }
+  };
+
+  // Il colore del testo è usato da moltissimi componenti condivisi in tutta l'app, calcolato una
+  // sola volta al caricamento di ciascuno: per essere sicuri che il nuovo colore si applichi
+  // ovunque in modo affidabile, dopo averlo salvato si ricarica la pagina (solo web).
+  const commitFontColor = async (hex: string) => {
+    applyFontColor(hex);
+    bumpTheme();
+    try {
+      await membershipRepository.updateOwnFontSettings(currentFontScale, hex);
+      if (Platform.OS === 'web' && typeof window !== 'undefined') {
+        window.location.reload();
+        return;
+      }
+      await reloadProfile();
+    } catch (err) {
+      showAlert('Errore', err instanceof Error ? err.message : String(err));
+    }
+  };
+
   return (
     <ScreenContainer>
+      {isOwner && (
+        <>
+          <Text style={styles.sectionTitle}>Colori</Text>
+          <Text style={styles.hint}>
+            Scegli i colori e lo sfondo dell'app. Le scelte si applicano subito a tutti gli account
+            dell'azienda.
+          </Text>
+
+          <Card>
+            <Text style={styles.label}>Colore principale</Text>
+            <ColorWheelPicker
+              initialValue={settings.primaryColor ?? DEFAULT_COLOR}
+              onChange={(hex) => previewTheme({ primaryColor: hex })}
+              onChangeComplete={(hex) => commitTheme({ primaryColor: hex })}
+            />
+          </Card>
+
+          <Card>
+            <Text style={styles.label}>Colore secondario</Text>
+            <ColorWheelPicker
+              initialValue={settings.accentColor ?? DEFAULT_COLOR}
+              onChange={(hex) => previewTheme({ accentColor: hex })}
+              onChangeComplete={(hex) => commitTheme({ accentColor: hex })}
+            />
+          </Card>
+
+          <Card>
+            <Text style={styles.label}>Colore sfondo</Text>
+            <ColorWheelPicker
+              initialValue={settings.backgroundColor ?? settings.primaryColor ?? DEFAULT_COLOR}
+              onChange={(hex) => previewTheme({ backgroundColor: hex })}
+              onChangeComplete={(hex) => commitTheme({ backgroundColor: hex })}
+            />
+
+            <Text style={[styles.label, styles.spacedLabel]}>Trasparenza sfondo</Text>
+            <Text style={styles.hint}>
+              Da sinistra (invisibile) a destra (colore pieno su tutta la schermata).
+            </Text>
+            <Slider
+              initialValue={(settings.backgroundOpacity ?? 0) / 100}
+              onChange={(value) => previewTheme({ backgroundOpacity: Math.round(value * 100) })}
+              onChangeComplete={(value) => commitTheme({ backgroundOpacity: Math.round(value * 100) })}
+            />
+          </Card>
+        </>
+      )}
+
+      <Text style={[styles.sectionTitle, isOwner && styles.spacedSection]}>Carattere</Text>
       <Text style={styles.hint}>
-        Scegli i colori e lo sfondo dell'app. Le scelte si applicano subito a tutti gli account
-        dell'azienda.
+        Impostazioni personali di lettura: valgono solo per il tuo account, su questo dispositivo.
       </Text>
 
       <Card>
-        <Text style={styles.label}>Colore principale</Text>
-        <ColorWheelPicker
-          initialValue={settings.primaryColor ?? DEFAULT_COLOR}
-          onChange={(hex) => previewTheme({ primaryColor: hex })}
-          onChangeComplete={(hex) => commitTheme({ primaryColor: hex })}
-        />
+        <Text style={styles.label}>Dimensione testo</Text>
+        <View style={styles.fontScaleRow}>
+          <Slider
+            initialValue={Math.max(0, Math.min(1, fontScaleSliderValue))}
+            onChange={previewFontScale}
+            onChangeComplete={commitFontScale}
+          />
+        </View>
       </Card>
 
       <Card>
-        <Text style={styles.label}>Colore secondario</Text>
-        <ColorWheelPicker
-          initialValue={settings.accentColor ?? DEFAULT_COLOR}
-          onChange={(hex) => previewTheme({ accentColor: hex })}
-          onChangeComplete={(hex) => commitTheme({ accentColor: hex })}
-        />
-      </Card>
-
-      <Card>
-        <Text style={styles.label}>Colore sfondo</Text>
-        <ColorWheelPicker
-          initialValue={settings.backgroundColor ?? settings.primaryColor ?? DEFAULT_COLOR}
-          onChange={(hex) => previewTheme({ backgroundColor: hex })}
-          onChangeComplete={(hex) => commitTheme({ backgroundColor: hex })}
-        />
-
-        <Text style={[styles.label, styles.positionLabel]}>Posizione sfondo</Text>
+        <Text style={styles.label}>Colore testo</Text>
+        <Text style={styles.hint}>Assicurati che resti leggibile rispetto allo sfondo.</Text>
         <View style={styles.chipsRow}>
-          {BACKGROUND_OPTIONS.map((option) => {
-            const selected = (settings.backgroundId ?? 'none') === option.id;
-            return (
-              <Pressable
-                key={option.id}
-                onPress={() => commitTheme({ backgroundId: option.id })}
-                style={[
-                  styles.backgroundOption,
-                  { backgroundColor: selected ? colors.primary : colors.surface, borderColor: colors.border },
-                ]}
-              >
-                <Text style={[styles.backgroundOptionText, { color: selected ? '#fff' : colors.text }]}>
-                  {option.label}
-                </Text>
-              </Pressable>
-            );
-          })}
+          {FONT_COLOR_OPTIONS.map((option) => (
+            <Chip
+              key={option.hex}
+              label={option.label}
+              color={option.hex === '#FFFFFF' ? colors.border : option.hex}
+              selected={(profile?.fontColor ?? '#0F172A') === option.hex}
+              onPress={() => commitFontColor(option.hex)}
+            />
+          ))}
         </View>
       </Card>
     </ScreenContainer>
@@ -102,6 +173,15 @@ export default function AppearanceScreen() {
 }
 
 const styles = StyleSheet.create({
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.text,
+    marginBottom: 8,
+  },
+  spacedSection: {
+    marginTop: 24,
+  },
   hint: {
     fontSize: 12,
     color: colors.textMuted,
@@ -113,23 +193,14 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     marginBottom: 12,
   },
-  positionLabel: {
+  spacedLabel: {
     marginTop: 20,
+  },
+  fontScaleRow: {
+    alignItems: 'flex-start',
   },
   chipsRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-  },
-  backgroundOption: {
-    borderWidth: 1,
-    borderRadius: 999,
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    marginRight: 8,
-    marginBottom: 8,
-  },
-  backgroundOptionText: {
-    fontSize: 13,
-    fontWeight: '600',
   },
 });

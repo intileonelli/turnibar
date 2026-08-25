@@ -111,3 +111,17 @@ export async function setAdminStatus(profileId: string, isAdmin: boolean): Promi
   const { error } = await supabase.rpc('set_admin_status', { p_profile_id: profileId, p_is_admin: isAdmin });
   if (error) throw error;
 }
+
+/**
+ * Aggiorna le impostazioni di lettura personali (dimensione/colore del testo) del profilo
+ * collegato: chiunque può cambiare le proprie, titolare o dipendente.
+ */
+export async function updateOwnFontSettings(fontScale: number, fontColor: string | undefined): Promise<void> {
+  const { data: auth } = await supabase.auth.getUser();
+  if (!auth.user) throw new Error('Nessun utente collegato.');
+  const { error } = await supabase
+    .from('profiles')
+    .update({ font_scale: fontScale, font_color: fontColor ?? null })
+    .eq('id', auth.user.id);
+  if (error) throw error;
+}

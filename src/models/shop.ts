@@ -45,8 +45,8 @@ export interface ShopSettings {
   primaryColor?: string;
   /** Colore secondario/accento dell'app, qualsiasi colore. Non impostato = colore di default. */
   accentColor?: string;
-  /** Posizione dello sfondo decorativo delle schermate. Non impostato = nessuno sfondo. */
-  backgroundId?: string;
-  /** Colore delle macchie decorative dello sfondo, qualsiasi colore. Non impostato = usa il colore principale. */
+  /** Colore di sfondo dell'app (velo sull'intera schermata), qualsiasi colore. Non impostato = usa il colore principale. */
   backgroundColor?: string;
+  /** Opacità del velo di sfondo, 0-100. Non impostato o 0 = nessuno sfondo visibile. */
+  backgroundOpacity?: number;
 }

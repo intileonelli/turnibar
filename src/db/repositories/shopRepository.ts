@@ -47,8 +47,8 @@ export async function getShopSettings(): Promise<ShopSettings> {
         allow_multiple_shifts_per_day: boolean;
         primary_color: string | null;
         accent_color: string | null;
-        background_id: string | null;
         background_color: string | null;
+        background_opacity: number | null;
       }
     | undefined;
   return {
@@ -56,8 +56,8 @@ export async function getShopSettings(): Promise<ShopSettings> {
     allowMultipleShiftsPerDay: row?.allow_multiple_shifts_per_day ?? false,
     primaryColor: row?.primary_color ?? undefined,
     accentColor: row?.accent_color ?? undefined,
-    backgroundId: row?.background_id ?? undefined,
     backgroundColor: row?.background_color ?? undefined,
+    backgroundOpacity: row?.background_opacity ?? undefined,
   };
 }
 
@@ -67,8 +67,8 @@ export async function updateShopSettings(settings: ShopSettings): Promise<void> 
     p_allow_multiple_shifts_per_day: settings.allowMultipleShiftsPerDay,
     p_primary_color: settings.primaryColor ?? null,
     p_accent_color: settings.accentColor ?? null,
-    p_background_id: settings.backgroundId ?? null,
     p_background_color: settings.backgroundColor ?? null,
+    p_background_opacity: settings.backgroundOpacity ?? null,
   });
   if (error) throw error;
 }

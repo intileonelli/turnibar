@@ -1,5 +1,6 @@
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { Platform, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
@@ -8,9 +9,20 @@ import { AuthGate } from '@/src/components/shared/AuthGate';
 import { ThemeGate } from '@/src/components/shared/ThemeGate';
 import { useCurrentAuth } from '@/src/context/AuthContext';
 import { colors } from '@/src/components/shared/colors';
+import { typographyState } from '@/src/components/shared/typography';
 import { NAV_ICONS } from '@/src/constants/navIcons';
 import { useThemeStore } from '@/src/store/themeStore';
 import { strings } from '@/src/i18n/strings';
+
+/**
+ * Su web, "zoom" ingrandisce testo E controlli insieme in modo coerente (come lo zoom del
+ * browser), a differenza di "transform: scale" che non fa ridisegnare il layout e causerebbe
+ * sovrapposizioni. Nessun equivalente pratico su nativo, quindi lì la scala personale non ha
+ * ancora effetto.
+ */
+function zoomStyle(): object {
+  return Platform.OS === 'web' ? { zoom: typographyState.scale } : {};
+}
 
 function tabIcon(name: keyof typeof Ionicons.glyphMap) {
   return ({ color, size }: { color: string; size: number }) => (
@@ -28,44 +40,46 @@ function AppTabs() {
   const isOwner = profile?.role === 'owner';
 
   return (
-    <Tabs
-      screenOptions={{
-        headerStyle: { backgroundColor: colors.surface },
-        headerTitleStyle: { color: colors.text },
-        tabBarActiveTintColor: colors.primary,
-        tabBarInactiveTintColor: colors.textMuted,
-      }}
-    >
-      <Tabs.Screen
-        name="index"
-        options={{ title: strings.tabs.home, tabBarIcon: tabIcon(NAV_ICONS.home) }}
-      />
-      <Tabs.Screen
-        name="dipendenti"
-        options={{
-          title: strings.tabs.employees,
-          headerShown: false,
-          href: isOwner ? undefined : null,
-          tabBarIcon: tabIcon(NAV_ICONS.dipendenti),
+    <View style={[{ flex: 1 }, zoomStyle()]}>
+      <Tabs
+        screenOptions={{
+          headerStyle: { backgroundColor: colors.surface },
+          headerTitleStyle: { color: colors.text },
+          tabBarActiveTintColor: colors.primary,
+          tabBarInactiveTintColor: colors.textMuted,
         }}
-      />
-      <Tabs.Screen
-        name="negozio"
-        options={{
-          title: strings.tabs.shop,
-          headerShown: false,
-          href: isOwner ? undefined : null,
-          tabBarIcon: tabIcon(NAV_ICONS.negozio),
-        }}
-      />
-      <Tabs.Screen
-        name="calendario"
-        options={{ title: strings.tabs.calendar, headerShown: false, tabBarIcon: tabIcon(NAV_ICONS.calendario) }}
-      />
-      <Tabs.Screen name="ferie" options={{ title: strings.tabs.leave, tabBarIcon: tabIcon(NAV_ICONS.ferie) }} />
-      <Tabs.Screen name="impostazioni" options={{ href: null, headerShown: false }} />
-      <Tabs.Screen name="+not-found" options={{ href: null }} />
-    </Tabs>
+      >
+        <Tabs.Screen
+          name="index"
+          options={{ title: strings.tabs.home, tabBarIcon: tabIcon(NAV_ICONS.home) }}
+        />
+        <Tabs.Screen
+          name="dipendenti"
+          options={{
+            title: strings.tabs.employees,
+            headerShown: false,
+            href: isOwner ? undefined : null,
+            tabBarIcon: tabIcon(NAV_ICONS.dipendenti),
+          }}
+        />
+        <Tabs.Screen
+          name="negozio"
+          options={{
+            title: strings.tabs.shop,
+            headerShown: false,
+            href: isOwner ? undefined : null,
+            tabBarIcon: tabIcon(NAV_ICONS.negozio),
+          }}
+        />
+        <Tabs.Screen
+          name="calendario"
+          options={{ title: strings.tabs.calendar, headerShown: false, tabBarIcon: tabIcon(NAV_ICONS.calendario) }}
+        />
+        <Tabs.Screen name="ferie" options={{ title: strings.tabs.leave, tabBarIcon: tabIcon(NAV_ICONS.ferie) }} />
+        <Tabs.Screen name="impostazioni" options={{ href: null, headerShown: false }} />
+        <Tabs.Screen name="+not-found" options={{ href: null }} />
+      </Tabs>
+    </View>
   );
 }
 
