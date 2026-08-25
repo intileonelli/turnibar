@@ -3,6 +3,7 @@ import { NativeScrollEvent, NativeSyntheticEvent, ScrollView, StyleSheet, View, 
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, themeState } from './colors';
 import { ScreenBackground } from './ScreenBackground';
+import { useThemeStore } from '@/src/store/themeStore';
 
 interface ScreenContainerProps extends PropsWithChildren {
   scroll?: boolean;
@@ -15,6 +16,10 @@ export const ScreenContainer = forwardRef<ScrollView, ScreenContainerProps>(func
   { children, scroll = true, style, onScroll, scrollEventThrottle },
   ref
 ) {
+  // Ogni schermata deve ridisegnare lo sfondo non appena il tema cambia (in questa o in un'altra
+  // schermata): senza questa sottoscrizione, `themeState` verrebbe letto solo al primo render.
+  useThemeStore((s) => s.version);
+
   return (
     <SafeAreaView style={styles.safeArea} edges={['bottom']}>
       <ScreenBackground color={themeState.backgroundColor} opacity={themeState.backgroundOpacity} />

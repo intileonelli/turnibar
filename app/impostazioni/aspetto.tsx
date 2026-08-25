@@ -1,6 +1,6 @@
+import { useEffect, useRef } from 'react';
 import { Platform, StyleSheet, Text, View } from 'react-native';
 import { ScreenContainer } from '@/src/components/shared/ScreenContainer';
-import { Card } from '@/src/components/shared/Card';
 import { Chip } from '@/src/components/shared/Chip';
 import { ColorWheelPicker } from '@/src/components/shared/ColorWheelPicker';
 import { Slider } from '@/src/components/shared/Slider';
@@ -29,21 +29,34 @@ export default function AppearanceScreen() {
   const { settings, reload: reloadSettings } = useShopSettings();
   const bumpTheme = useThemeStore((s) => s.bump);
 
+  // Fonte di verità per le modifiche in corso: si aggiorna in modo sincrono ad ogni scelta
+  // (anteprima o salvataggio), quindi non risente di eventuali ricariche dal database ancora in
+  // corso. Usare invece `settings` (stato React) per unire le modifiche creerebbe una corsa: se
+  // si sceglie un colore e poi si sposta subito lo slider della trasparenza, il secondo salvataggio
+  // partirebbe da un `settings` non ancora aggiornato con il colore appena scelto, cancellandolo.
+  const draftRef = useRef(settings);
+  useEffect(() => {
+    draftRef.current = settings;
+  }, [settings]);
+
   // Anteprima immediata mentre si trascina sulla ruota/sul cursore: aggiorna solo lo stato
   // locale del tema, senza scrivere sul database (verrebbe chiamato troppo spesso durante il
   // trascinamento).
   const previewTheme = (patch: Partial<ShopSettings>) => {
-    applyTheme({ ...settings, ...patch });
+    const next = { ...draftRef.current, ...patch };
+    draftRef.current = next;
+    applyTheme(next);
     bumpTheme();
   };
 
   // Salva sul database: chiamato al rilascio del dito/mouse.
   const commitTheme = async (patch: Partial<ShopSettings>) => {
-    const next = { ...settings, ...patch };
+    const next = { ...draftRef.current, ...patch };
+    draftRef.current = next;
+    applyTheme(next);
+    bumpTheme();
     try {
       await shopRepository.updateShopSettings(next);
-      applyTheme(next);
-      bumpTheme();
       await reloadSettings();
     } catch (err) {
       showAlert('Errore', err instanceof Error ? err.message : String(err));
@@ -98,25 +111,25 @@ export default function AppearanceScreen() {
             dell'azienda.
           </Text>
 
-          <Card>
+          <View style={styles.section}>
             <Text style={styles.label}>Colore principale</Text>
             <ColorWheelPicker
               initialValue={settings.primaryColor ?? DEFAULT_COLOR}
               onChange={(hex) => previewTheme({ primaryColor: hex })}
               onChangeComplete={(hex) => commitTheme({ primaryColor: hex })}
             />
-          </Card>
+          </View>
 
-          <Card>
+          <View style={styles.section}>
             <Text style={styles.label}>Colore secondario</Text>
             <ColorWheelPicker
               initialValue={settings.accentColor ?? DEFAULT_COLOR}
               onChange={(hex) => previewTheme({ accentColor: hex })}
               onChangeComplete={(hex) => commitTheme({ accentColor: hex })}
             />
-          </Card>
+          </View>
 
-          <Card>
+          <View style={styles.section}>
             <Text style={styles.label}>Colore sfondo</Text>
             <ColorWheelPicker
               initialValue={settings.backgroundColor ?? settings.primaryColor ?? DEFAULT_COLOR}
@@ -133,7 +146,7 @@ export default function AppearanceScreen() {
               onChange={(value) => previewTheme({ backgroundOpacity: Math.round(value * 100) })}
               onChangeComplete={(value) => commitTheme({ backgroundOpacity: Math.round(value * 100) })}
             />
-          </Card>
+          </View>
         </>
       )}
 
@@ -142,7 +155,7 @@ export default function AppearanceScreen() {
         Impostazioni personali di lettura: valgono solo per il tuo account, su questo dispositivo.
       </Text>
 
-      <Card>
+      <View style={styles.section}>
         <Text style={styles.label}>Dimensione testo</Text>
         <View style={styles.fontScaleRow}>
           <Slider
@@ -151,9 +164,9 @@ export default function AppearanceScreen() {
             onChangeComplete={commitFontScale}
           />
         </View>
-      </Card>
+      </View>
 
-      <Card>
+      <View style={styles.section}>
         <Text style={styles.label}>Colore testo</Text>
         <Text style={styles.hint}>Assicurati che resti leggibile rispetto allo sfondo.</Text>
         <View style={styles.chipsRow}>
@@ -167,7 +180,7 @@ export default function AppearanceScreen() {
             />
           ))}
         </View>
-      </Card>
+      </View>
     </ScreenContainer>
   );
 }
@@ -181,6 +194,9 @@ const styles = StyleSheet.create({
   },
   spacedSection: {
     marginTop: 24,
+  },
+  section: {
+    marginBottom: 24,
   },
   hint: {
     fontSize: 12,

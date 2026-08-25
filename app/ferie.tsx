@@ -144,11 +144,12 @@ export default function LeaveScreen() {
     setSelectedDate(date);
   };
 
-  const handleSaveDay: DayAbsenceModalProps['onSave'] = async ({ absence, categoryId }) => {
+  const handleSaveDay: DayAbsenceModalProps['onSave'] = async (selection) => {
     if (!effectiveEmployeeId || !selectedDate) return;
 
+    const isAbsenceChoice = selection.mode === 'full' || selection.mode === 'partial';
     const wasAbsent = markedDates.has(selectedDate) || partialDates.has(selectedDate);
-    if (!wasAbsent && absence.mode !== 'none' && settings.maxDailyTimeOff !== undefined) {
+    if (!wasAbsent && isAbsenceChoice && settings.maxDailyTimeOff !== undefined) {
       const otherCount = otherCounts[selectedDate] ?? 0;
       if (otherCount >= settings.maxDailyTimeOff) {
         showAlert(
@@ -161,18 +162,28 @@ export default function LeaveScreen() {
 
     setSavingDay(true);
     try {
-      if (absence.mode === 'none') {
-        await timeOffRepository.removeTimeOff(effectiveEmployeeId, selectedDate);
-      } else if (absence.mode === 'full') {
-        await timeOffRepository.addTimeOff(effectiveEmployeeId, selectedDate);
+      // Permesso/ferie e fascia richiesta sono ora alternativi: salvando l'una si cancella
+      // sempre l'altra, così non restano mai combinati per errore per lo stesso giorno.
+      if (selection.mode === 'none') {
+        await Promise.all([
+          timeOffRepository.removeTimeOff(effectiveEmployeeId, selectedDate),
+          categoryRequestRepository.removeCategoryRequest(effectiveEmployeeId, selectedDate),
+        ]);
+      } else if (selection.mode === 'full') {
+        await Promise.all([
+          timeOffRepository.addTimeOff(effectiveEmployeeId, selectedDate),
+          categoryRequestRepository.removeCategoryRequest(effectiveEmployeeId, selectedDate),
+        ]);
+      } else if (selection.mode === 'partial') {
+        await Promise.all([
+          timeOffRepository.setPermit(effectiveEmployeeId, selectedDate, selection.startTime, selection.endTime),
+          categoryRequestRepository.removeCategoryRequest(effectiveEmployeeId, selectedDate),
+        ]);
       } else {
-        await timeOffRepository.setPermit(effectiveEmployeeId, selectedDate, absence.startTime, absence.endTime);
-      }
-
-      if (categoryId === null) {
-        await categoryRequestRepository.removeCategoryRequest(effectiveEmployeeId, selectedDate);
-      } else {
-        await categoryRequestRepository.setCategoryRequest(effectiveEmployeeId, selectedDate, categoryId);
+        await Promise.all([
+          timeOffRepository.removeTimeOff(effectiveEmployeeId, selectedDate),
+          categoryRequestRepository.setCategoryRequest(effectiveEmployeeId, selectedDate, selection.categoryId),
+        ]);
       }
 
       await Promise.all([reloadAllTimeOff(), reloadAllCategoryRequests()]);

@@ -8,7 +8,13 @@ import { colors } from '@/src/components/shared/colors';
 import { formatDateLong, normalizeTime } from '@/src/utils/date';
 import { showAlert } from '@/src/utils/alert';
 
-type AbsenceMode = 'none' | 'full' | 'partial';
+type Mode = 'none' | 'full' | 'partial' | 'category';
+
+export type DaySelection =
+  | { mode: 'none' }
+  | { mode: 'full' }
+  | { mode: 'partial'; startTime: string; endTime: string }
+  | { mode: 'category'; categoryId: string };
 
 export interface DayAbsenceModalProps {
   visible: boolean;
@@ -18,10 +24,7 @@ export interface DayAbsenceModalProps {
   categories: ShiftCategory[];
   saving: boolean;
   onClose: () => void;
-  onSave: (input: {
-    absence: { mode: 'none' } | { mode: 'full' } | { mode: 'partial'; startTime: string; endTime: string };
-    categoryId: string | null;
-  }) => void;
+  onSave: (selection: DaySelection) => void;
 }
 
 export function DayAbsenceModal({
@@ -34,46 +37,58 @@ export function DayAbsenceModal({
   onClose,
   onSave,
 }: DayAbsenceModalProps) {
-  const [absenceMode, setAbsenceMode] = useState<AbsenceMode>('none');
+  const [mode, setMode] = useState<Mode>('none');
   const [startTime, setStartTime] = useState('09:00');
   const [endTime, setEndTime] = useState('13:00');
   const [categoryId, setCategoryId] = useState<string | null>(null);
 
+  // Permesso (orario specifico) e fascia richiesta (macro categoria) sono alternativi: chiedere
+  // "solo apertura" e allo stesso tempo un permesso 09-13 quel giorno può azzerare gli slot
+  // disponibili per la fascia richiesta, escludendo la persona da tutto. Per questo la scelta è
+  // una sola tra le opzioni sotto, non una combinazione.
+  const selectCategory = (id: string) => {
+    setMode('category');
+    setCategoryId(id);
+  };
+
   useEffect(() => {
     if (!visible) return;
-    if (currentTimeOff) {
-      if (currentTimeOff.startTime && currentTimeOff.endTime) {
-        setAbsenceMode('partial');
-        setStartTime(currentTimeOff.startTime);
-        setEndTime(currentTimeOff.endTime);
-      } else {
-        setAbsenceMode('full');
-      }
+    if (currentCategoryRequest) {
+      setMode('category');
+      setCategoryId(currentCategoryRequest.categoryId);
+    } else if (currentTimeOff?.startTime && currentTimeOff.endTime) {
+      setMode('partial');
+      setStartTime(currentTimeOff.startTime);
+      setEndTime(currentTimeOff.endTime);
+    } else if (currentTimeOff) {
+      setMode('full');
     } else {
-      setAbsenceMode('none');
+      setMode('none');
+    }
+    if (!currentCategoryRequest) setCategoryId(null);
+    if (!(currentTimeOff?.startTime && currentTimeOff?.endTime)) {
       setStartTime('09:00');
       setEndTime('13:00');
     }
-    setCategoryId(currentCategoryRequest?.categoryId ?? null);
   }, [visible, currentTimeOff, currentCategoryRequest]);
 
-  const selectFull = () => {
-    setAbsenceMode('full');
-    setCategoryId(null); // in ferie tutto il giorno non ha senso chiedere una fascia da lavorare
-  };
-
   const handleSave = () => {
-    if (absenceMode === 'partial') {
+    if (mode === 'partial') {
       const normalizedStart = normalizeTime(startTime);
       const normalizedEnd = normalizeTime(endTime);
       if (!normalizedStart || !normalizedEnd) {
         showAlert('Orario non valido', 'Inserisci gli orari nel formato HH:mm (es. 14:00).');
         return;
       }
-      onSave({ absence: { mode: 'partial', startTime: normalizedStart, endTime: normalizedEnd }, categoryId });
+      onSave({ mode: 'partial', startTime: normalizedStart, endTime: normalizedEnd });
       return;
     }
-    onSave({ absence: { mode: absenceMode }, categoryId });
+    if (mode === 'category') {
+      if (!categoryId) return;
+      onSave({ mode: 'category', categoryId });
+      return;
+    }
+    onSave({ mode });
   };
 
   if (!date) return null;
@@ -84,14 +99,26 @@ export function DayAbsenceModal({
         <View style={styles.sheet}>
           <Text style={styles.title}>{formatDateLong(date)}</Text>
 
-          <Text style={styles.sectionLabel}>Assenza</Text>
+          <Text style={styles.sectionLabel}>Cosa vuoi impostare per questo giorno?</Text>
+          <Text style={styles.hint}>
+            Scegli una sola opzione: un permesso su un orario specifico, oppure una fascia di lavoro
+            richiesta (es. solo apertura).
+          </Text>
           <View style={styles.chipsRow}>
-            <Chip label="Nessuna" selected={absenceMode === 'none'} onPress={() => setAbsenceMode('none')} />
-            <Chip label="Giorno intero (ferie)" selected={absenceMode === 'full'} onPress={selectFull} />
-            <Chip label="Fascia oraria (permesso)" selected={absenceMode === 'partial'} onPress={() => setAbsenceMode('partial')} />
+            <Chip label="Nessuna" selected={mode === 'none'} onPress={() => setMode('none')} />
+            <Chip label="Giorno intero (ferie)" selected={mode === 'full'} onPress={() => setMode('full')} />
+            <Chip label="Fascia oraria (permesso)" selected={mode === 'partial'} onPress={() => setMode('partial')} />
+            {categories.map((category) => (
+              <Chip
+                key={category.id}
+                label={`Solo ${category.name}`}
+                selected={mode === 'category' && categoryId === category.id}
+                onPress={() => selectCategory(category.id)}
+              />
+            ))}
           </View>
 
-          {absenceMode === 'partial' && (
+          {mode === 'partial' && (
             <View style={styles.timeRow}>
               <View style={styles.timeField}>
                 <TextField label="Da" value={startTime} onChangeText={setStartTime} placeholder="14:00" />
@@ -100,26 +127,6 @@ export function DayAbsenceModal({
                 <TextField label="A" value={endTime} onChangeText={setEndTime} placeholder="18:00" />
               </View>
             </View>
-          )}
-
-          {absenceMode !== 'full' && (
-            <>
-              <Text style={styles.sectionLabel}>Fascia oraria richiesta per questo giorno</Text>
-              <Text style={styles.hint}>
-                Se quel giorno lavori, chiedi di essere messo solo in questa fascia (es. solo sera).
-              </Text>
-              <View style={styles.chipsRow}>
-                <Chip label="Nessuna" selected={categoryId === null} onPress={() => setCategoryId(null)} />
-                {categories.map((category) => (
-                  <Chip
-                    key={category.id}
-                    label={category.name}
-                    selected={categoryId === category.id}
-                    onPress={() => setCategoryId(category.id)}
-                  />
-                ))}
-              </View>
-            </>
           )}
 
           <View style={styles.actions}>
