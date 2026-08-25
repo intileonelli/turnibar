@@ -1,5 +1,19 @@
 import { useRef } from 'react';
-import { GestureResponderEvent, PanResponder, View } from 'react-native';
+import { GestureResponderEvent, PanResponder, Platform, View } from 'react-native';
+
+/**
+ * `measureInWindow` (usato per l'origine della superficie) restituisce coordinate relative al
+ * VIEWPORT (getBoundingClientRect), mentre `pageX`/`pageY` dell'evento sono relative all'intera
+ * PAGINA (includono lo scroll): se la pagina è scrollata, sottrarre l'una dall'altra senza
+ * correggere introduce uno scarto costante pari allo scroll corrente, motivo per cui il pallino
+ * finiva lontano dal punto toccato. Va sommato lo scroll corrente per riportarle allo stesso
+ * sistema di riferimento (vedi commento di react-native-web su pageXOffset/pageYOffset in
+ * Touchable). Su nativo lo scroll della pagina non esiste, quindi la correzione è 0.
+ */
+function pageScrollOffset(): { x: number; y: number } {
+  if (Platform.OS !== 'web' || typeof window === 'undefined') return { x: 0, y: 0 };
+  return { x: window.scrollX ?? 0, y: window.scrollY ?? 0 };
+}
 
 interface UseDragSurfaceOptions {
   /** Posizione del tocco relativa all'angolo in alto a sinistra della superficie, in pixel. */
@@ -20,7 +34,8 @@ export function useDragSurface({ onMove, onRelease }: UseDragSurfaceOptions) {
 
   const handleMove = (evt: GestureResponderEvent) => {
     const { pageX, pageY } = evt.nativeEvent;
-    onMove(pageX - originRef.current.x, pageY - originRef.current.y);
+    const scroll = pageScrollOffset();
+    onMove(pageX - scroll.x - originRef.current.x, pageY - scroll.y - originRef.current.y);
   };
 
   const handleGrant = (evt: GestureResponderEvent) => {
