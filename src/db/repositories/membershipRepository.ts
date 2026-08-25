@@ -41,12 +41,16 @@ export interface CompanyInfo {
   id: string;
   name: string;
   inviteCode: string;
+  /** Profilo del titolare che ha creato l'azienda: solo lui può nominare/rimuovere amministratori. */
+  founderProfileId: string;
 }
 
 export async function getMyCompany(): Promise<CompanyInfo | null> {
   const { data, error } = await supabase.from('companies').select('*').maybeSingle();
   if (error) throw error;
-  return data ? { id: data.id, name: data.name, inviteCode: data.invite_code } : null;
+  return data
+    ? { id: data.id, name: data.name, inviteCode: data.invite_code, founderProfileId: data.founder_profile_id }
+    : null;
 }
 
 /** Cambia il nome dell'azienda (mostrato nella Home al posto di "Turnibar"). Solo il titolare può usarla. */
@@ -84,4 +88,26 @@ export async function listEmployeeProfiles(): Promise<EmployeeProfile[]> {
     .order('full_name');
   if (error) throw error;
   return (data ?? []).map((row) => ({ id: row.id, fullName: row.full_name }));
+}
+
+export interface CompanyProfile {
+  id: string;
+  fullName: string;
+  role: 'owner' | 'employee';
+}
+
+/** Tutti gli account registrati in azienda (titolare/amministratori inclusi), per gestire chi ha accesso da amministratore. */
+export async function listCompanyProfiles(): Promise<CompanyProfile[]> {
+  const { data, error } = await supabase.from('profiles').select('id, full_name, role').order('full_name');
+  if (error) throw error;
+  return (data ?? []).map((row) => ({ id: row.id, fullName: row.full_name, role: row.role }));
+}
+
+/**
+ * Nomina o rimuove un amministratore (stesso accesso completo del titolare). Solo il titolare
+ * che ha creato l'azienda può usarla; la funzione lato database applica anche questo controllo.
+ */
+export async function setAdminStatus(profileId: string, isAdmin: boolean): Promise<void> {
+  const { error } = await supabase.rpc('set_admin_status', { p_profile_id: profileId, p_is_admin: isAdmin });
+  if (error) throw error;
 }

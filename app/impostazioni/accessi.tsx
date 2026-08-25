@@ -4,29 +4,38 @@ import { useFocusEffect } from 'expo-router';
 import { ScreenContainer } from '@/src/components/shared/ScreenContainer';
 import { Button } from '@/src/components/shared/Button';
 import { Card } from '@/src/components/shared/Card';
+import { Badge } from '@/src/components/shared/Badge';
 import { TextField } from '@/src/components/shared/TextField';
 import { colors } from '@/src/components/shared/colors';
 import { useEmployees } from '@/src/hooks/useEmployees';
+import { useCurrentAuth } from '@/src/context/AuthContext';
 import { membershipRepository } from '@/src/db/repositories';
-import { CompanyInfo, EmployeeProfile } from '@/src/db/repositories/membershipRepository';
+import { CompanyInfo, CompanyProfile, EmployeeProfile } from '@/src/db/repositories/membershipRepository';
 import { confirmAction, showAlert } from '@/src/utils/alert';
 import { strings } from '@/src/i18n/strings';
 
 export default function CompanyAccessScreen() {
+  const { session } = useCurrentAuth();
   const { employees, reload: reloadEmployees } = useEmployees();
   const [company, setCompany] = useState<CompanyInfo | null>(null);
   const [profiles, setProfiles] = useState<EmployeeProfile[]>([]);
+  const [companyProfiles, setCompanyProfiles] = useState<CompanyProfile[]>([]);
   const [regenerating, setRegenerating] = useState(false);
   const [nameInput, setNameInput] = useState('');
   const [savingName, setSavingName] = useState(false);
+  const [savingAdminId, setSavingAdminId] = useState<string | null>(null);
+
+  const isFounder = !!company && session?.user.id === company.founderProfileId;
 
   const load = useCallback(async () => {
-    const [companyInfo, employeeProfiles] = await Promise.all([
+    const [companyInfo, employeeProfiles, allProfiles] = await Promise.all([
       membershipRepository.getMyCompany(),
       membershipRepository.listEmployeeProfiles(),
+      membershipRepository.listCompanyProfiles(),
     ]);
     setCompany(companyInfo);
     setProfiles(employeeProfiles);
+    setCompanyProfiles(allProfiles);
   }, []);
 
   useFocusEffect(
@@ -70,6 +79,28 @@ export default function CompanyAccessScreen() {
     );
   };
 
+  const handleSetAdmin = (profile: CompanyProfile, isAdmin: boolean) => {
+    confirmAction(
+      isAdmin ? 'Rendere amministratore?' : 'Rimuovere da amministratore?',
+      isAdmin
+        ? `"${profile.fullName}" avrà accesso completo all'app, come il titolare.`
+        : `"${profile.fullName}" tornerà ad avere l'accesso limitato di un dipendente.`,
+      async () => {
+        setSavingAdminId(profile.id);
+        try {
+          await membershipRepository.setAdminStatus(profile.id, isAdmin);
+          await load();
+        } catch (err) {
+          showAlert('Errore', err instanceof Error ? err.message : String(err));
+        } finally {
+          setSavingAdminId(null);
+        }
+      },
+      isAdmin ? 'Rendi amministratore' : 'Rimuovi',
+      !isAdmin
+    );
+  };
+
   const handleRelink = (profile: EmployeeProfile, employeeId: string) => {
     confirmAction(
       'Cambiare collegamento?',
@@ -107,6 +138,39 @@ export default function CompanyAccessScreen() {
         <Text style={[styles.code, { color: colors.primary }]}>{company?.inviteCode ?? '...'}</Text>
         <Button label="Rigenera codice" variant="secondary" onPress={handleRegenerate} loading={regenerating} />
       </Card>
+
+      {isFounder && (
+        <>
+          <Text style={styles.sectionTitle}>Amministratori</Text>
+          <Text style={styles.hint}>
+            Un amministratore ha lo stesso accesso completo del titolare. Solo tu, che hai creato
+            l'azienda, puoi nominarli o rimuoverli.
+          </Text>
+          {companyProfiles.map((profile) => {
+            const isThisFounder = profile.id === company?.founderProfileId;
+            return (
+              <Card key={profile.id}>
+                <View style={styles.adminRow}>
+                  <View style={styles.adminInfo}>
+                    <Text style={styles.employeeName}>{profile.fullName}</Text>
+                    <Badge
+                      label={isThisFounder ? 'Titolare' : profile.role === 'owner' ? 'Amministratore' : 'Dipendente'}
+                    />
+                  </View>
+                  {!isThisFounder && (
+                    <Button
+                      label={profile.role === 'owner' ? 'Rimuovi' : 'Rendi amministratore'}
+                      variant={profile.role === 'owner' ? 'danger' : 'secondary'}
+                      onPress={() => handleSetAdmin(profile, profile.role !== 'owner')}
+                      loading={savingAdminId === profile.id}
+                    />
+                  )}
+                </View>
+              </Card>
+            );
+          })}
+        </>
+      )}
 
       <Text style={styles.sectionTitle}>Dipendenti e account collegati</Text>
       {employees.map((employee) => {
@@ -184,6 +248,16 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700',
     color: colors.text,
+  },
+  adminRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 8,
+  },
+  adminInfo: {
+    gap: 6,
+    flexShrink: 1,
   },
   hint: {
     fontSize: 12,

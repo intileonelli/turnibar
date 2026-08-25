@@ -63,8 +63,7 @@ function AppTabs() {
         options={{ title: strings.tabs.calendar, headerShown: false, tabBarIcon: tabIcon(NAV_ICONS.calendario) }}
       />
       <Tabs.Screen name="ferie" options={{ title: strings.tabs.leave, tabBarIcon: tabIcon(NAV_ICONS.ferie) }} />
-      <Tabs.Screen name="migrazione-dati" options={{ href: null }} />
-      <Tabs.Screen name="cambia-password" options={{ href: null, title: 'Cambia password' }} />
+      <Tabs.Screen name="impostazioni" options={{ href: null, headerShown: false }} />
       <Tabs.Screen name="+not-found" options={{ href: null }} />
     </Tabs>
   );

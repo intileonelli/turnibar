@@ -10,4 +10,5 @@ export const NAV_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
   negozio: 'storefront',
   calendario: 'calendar',
   ferie: 'airplane',
+  impostazioni: 'settings',
 };

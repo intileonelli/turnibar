@@ -11,9 +11,11 @@ import { useCurrentAuth } from '@/src/context/AuthContext';
 
 export default function HomeScreen() {
   const router = useRouter();
-  const { profile, signOut } = useCurrentAuth();
+  const { session, profile, signOut } = useCurrentAuth();
   const { company } = useCompany();
   const isOwner = profile?.role === 'owner';
+  const isFounder = !!company && session?.user.id === company.founderProfileId;
+  const roleLabel = isFounder ? 'Titolare' : isOwner ? 'Amministratore' : 'Dipendente';
 
   return (
     <ScreenContainer scroll={false} style={styles.container}>
@@ -21,7 +23,7 @@ export default function HomeScreen() {
         <Text style={styles.title}>{company?.name ?? strings.home.title}</Text>
         {profile && (
           <Text style={styles.account}>
-            Collegato come {profile.fullName} · {isOwner ? 'Titolare' : 'Dipendente'}
+            Collegato come {profile.fullName} · {roleLabel}
           </Text>
         )}
 
@@ -34,25 +36,14 @@ export default function HomeScreen() {
           )}
           <IconTile icon={NAV_ICONS.calendario} label="Calendario" onPress={() => router.push('/calendario')} />
           <IconTile icon={NAV_ICONS.ferie} label="Ferie" onPress={() => router.push('/ferie')} />
+          <IconTile
+            icon={NAV_ICONS.impostazioni}
+            label="Impostazioni"
+            onPress={() => router.push('/impostazioni')}
+          />
         </View>
 
         <View style={styles.actions}>
-          {isOwner && (
-            <>
-              <Button
-                label="Importa dati locali"
-                variant="secondary"
-                onPress={() => router.push('/migrazione-dati')}
-              />
-              <View style={styles.spacer} />
-            </>
-          )}
-          <Button
-            label="Cambia password"
-            variant="secondary"
-            onPress={() => router.push('/cambia-password')}
-          />
-          <View style={styles.spacer} />
           <Button label="Esci" variant="danger" onPress={() => signOut()} />
         </View>
       </View>
@@ -85,9 +76,6 @@ const styles = StyleSheet.create({
   },
   actions: {
     marginTop: 8,
-  },
-  spacer: {
-    height: 12,
   },
   subtitleCorner: {
     fontSize: 12,
