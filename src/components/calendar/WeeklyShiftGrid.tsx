@@ -1,5 +1,5 @@
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { Employee, Role, ShiftAssignment, ShiftTemplate, WEEKDAY_LABELS_SHORT, WEEKDAYS } from '@/src/models';
+import { Employee, ShiftAssignment, ShiftTemplate, WEEKDAY_LABELS_SHORT, WEEKDAYS } from '@/src/models';
 import { dateForWeekday, timeToMinutes } from '@/src/engine';
 import { formatDateLong } from '@/src/utils/date';
 import { colors } from '@/src/components/shared/colors';
@@ -11,7 +11,6 @@ interface WeeklyShiftGridProps {
   shiftTemplates: ShiftTemplate[];
   assignments: ShiftAssignment[];
   employees: Employee[];
-  roles: Role[];
   onAssignmentPress: (assignment: ShiftAssignment, template: ShiftTemplate) => void;
   onEmptySlotPress: (template: ShiftTemplate, date: string, roleIds: string[]) => void;
 }
@@ -21,12 +20,10 @@ export function WeeklyShiftGrid({
   shiftTemplates,
   assignments,
   employees,
-  roles,
   onAssignmentPress,
   onEmptySlotPress,
 }: WeeklyShiftGridProps) {
   const employeeById = new Map(employees.map((e) => [e.id, e]));
-  const roleById = new Map(roles.map((r) => [r.id, r]));
 
   return (
     <ScrollView
@@ -94,7 +91,6 @@ export function WeeklyShiftGrid({
                           <View style={styles.chipsRow}>
                             {roleAssignments.map((a) => {
                               const employee = employeeById.get(a.employeeId);
-                              const employeeRole = employee ? roleById.get(employee.roleId) : undefined;
                               let isFallback = false;
                               if (employee) {
                                 const primaryIdx = req.roleIds.indexOf(employee.roleId);
@@ -110,7 +106,7 @@ export function WeeklyShiftGrid({
                                   onPress={() => onAssignmentPress(a, template)}
                                   style={[
                                     styles.employeeChip,
-                                    { borderColor: employeeRole?.color ?? colors.border },
+                                    { borderColor: employee?.color ?? colors.border },
                                   ]}
                                 >
                                   <Text style={styles.employeeChipText}>
@@ -190,13 +186,14 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   shiftName: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: colors.text,
+    fontSize: 10,
+    fontWeight: '600',
+    color: colors.textMuted,
   },
   shiftTime: {
-    fontSize: 10,
-    color: colors.textMuted,
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.text,
     marginBottom: 4,
   },
   roleBlock: {
@@ -215,9 +212,9 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   employeeChipText: {
-    fontSize: 11,
+    fontSize: 13,
     color: colors.text,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   emptySlot: {
     borderWidth: 1,

@@ -1,9 +1,11 @@
 import { supabase } from '@/src/lib/supabase';
 import { Employee, EmployeePriority, Weekday } from '@/src/models';
+import { EMPLOYEE_COLOR_PALETTE } from '@/src/constants/employeeColors';
 
 interface EmployeeRow {
   id: string;
   name: string;
+  color: string;
   role_id: string;
   secondary_role_id: string | null;
   weekly_contract_hours: number | null;
@@ -23,6 +25,7 @@ function mapRow(row: EmployeeRow): Employee {
   return {
     id: row.id,
     name: row.name,
+    color: row.color,
     roleId: row.role_id,
     secondaryRoleId: row.secondary_role_id ?? undefined,
     weeklyContractHours: row.weekly_contract_hours ?? undefined,
@@ -44,6 +47,7 @@ function mapRow(row: EmployeeRow): Employee {
 function toRow(input: Omit<Employee, 'id'>) {
   return {
     name: input.name,
+    color: input.color,
     role_id: input.roleId,
     secondary_role_id: input.secondaryRoleId ?? null,
     weekly_contract_hours: input.weeklyContractHours ?? null,
@@ -78,8 +82,15 @@ export async function getEmployee(id: string): Promise<Employee | null> {
   return data ? mapRow(data) : null;
 }
 
-export async function createEmployee(input: Omit<Employee, 'id'>): Promise<Employee> {
-  const { data, error } = await supabase.from('employees').insert(toRow(input)).select().single();
+/** Il colore è assegnato automaticamente dal sistema (ciclando sulla palette), non scelto dall'utente. */
+export async function createEmployee(input: Omit<Employee, 'id' | 'color'>): Promise<Employee> {
+  const { count } = await supabase.from('employees').select('id', { count: 'exact', head: true });
+  const color = EMPLOYEE_COLOR_PALETTE[(count ?? 0) % EMPLOYEE_COLOR_PALETTE.length];
+  const { data, error } = await supabase
+    .from('employees')
+    .insert(toRow({ ...input, color }))
+    .select()
+    .single();
   if (error) throw error;
   return mapRow(data);
 }

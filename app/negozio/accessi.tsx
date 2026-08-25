@@ -1,20 +1,24 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import { ScreenContainer } from '@/src/components/shared/ScreenContainer';
 import { Button } from '@/src/components/shared/Button';
 import { Card } from '@/src/components/shared/Card';
+import { TextField } from '@/src/components/shared/TextField';
 import { colors } from '@/src/components/shared/colors';
 import { useEmployees } from '@/src/hooks/useEmployees';
 import { membershipRepository } from '@/src/db/repositories';
 import { CompanyInfo, EmployeeProfile } from '@/src/db/repositories/membershipRepository';
 import { confirmAction, showAlert } from '@/src/utils/alert';
+import { strings } from '@/src/i18n/strings';
 
 export default function CompanyAccessScreen() {
   const { employees, reload: reloadEmployees } = useEmployees();
   const [company, setCompany] = useState<CompanyInfo | null>(null);
   const [profiles, setProfiles] = useState<EmployeeProfile[]>([]);
   const [regenerating, setRegenerating] = useState(false);
+  const [nameInput, setNameInput] = useState('');
+  const [savingName, setSavingName] = useState(false);
 
   const load = useCallback(async () => {
     const [companyInfo, employeeProfiles] = await Promise.all([
@@ -30,6 +34,23 @@ export default function CompanyAccessScreen() {
       load();
     }, [load])
   );
+
+  useEffect(() => {
+    if (company) setNameInput(company.name);
+  }, [company]);
+
+  const handleSaveName = async () => {
+    if (!company || !nameInput.trim()) return;
+    setSavingName(true);
+    try {
+      await membershipRepository.updateCompanyName(company.id, nameInput.trim());
+      await load();
+    } catch (err) {
+      showAlert('Errore', err instanceof Error ? err.message : String(err));
+    } finally {
+      setSavingName(false);
+    }
+  };
 
   const handleRegenerate = () => {
     if (!company) return;
@@ -68,6 +89,14 @@ export default function CompanyAccessScreen() {
   return (
     <ScreenContainer>
       <Text style={styles.title}>Accessi dipendenti</Text>
+
+      <Card>
+        <Text style={styles.codeLabel}>Nome azienda</Text>
+        <Text style={styles.hint}>Mostrato nella schermata principale dell'app al posto di "Turnibar".</Text>
+        <TextField label="Nome" value={nameInput} onChangeText={setNameInput} placeholder="Es. Bar Rossi" />
+        <Button label={strings.common.save} variant="secondary" onPress={handleSaveName} loading={savingName} />
+      </Card>
+
       <Text style={styles.subtitle}>
         Condividi questo codice con i tuoi dipendenti: lo useranno per registrarsi nell'app e
         identificarsi scegliendo il proprio nome dall'elenco.

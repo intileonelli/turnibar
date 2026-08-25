@@ -9,6 +9,7 @@ const CATEGORY_SERA = 'cat-sera';
 
 function makeEmployee(overrides: Partial<Employee> & Pick<Employee, 'id' | 'name' | 'roleId'>): Employee {
   return {
+    color: '#4F46E5',
     weeklyContractHours: 20,
     maxWeeklyHours: 20,
     active: true,

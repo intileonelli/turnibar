@@ -125,7 +125,6 @@ export default function CalendarScreen() {
         shiftTemplates={shiftTemplates}
         assignments={assignments}
         employees={employees}
-        roles={roles}
         onAssignmentPress={handleAssignmentPress}
         onEmptySlotPress={handleEmptySlotPress}
       />

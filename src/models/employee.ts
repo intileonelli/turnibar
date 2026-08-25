@@ -16,6 +16,8 @@ export const EMPLOYEE_PRIORITY_LABELS: Record<EmployeePriority, string> = {
 export interface Employee {
   id: string;
   name: string;
+  /** Colore personale del dipendente (usato nel calendario turni), assegnato automaticamente alla creazione. */
+  color: string;
   roleId: string;
   /** Ruolo secondario/di riserva, opzionale: usato se il ruolo principale non copre il requisito. */
   secondaryRoleId?: string;

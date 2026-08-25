@@ -6,4 +6,5 @@ export * from './useTimeOff';
 export * from './useAllTimeOff';
 export * from './useAllCategoryRequests';
 export * from './useShopSettings';
+export * from './useCompany';
 export * from './useSchedule';

@@ -49,6 +49,12 @@ export async function getMyCompany(): Promise<CompanyInfo | null> {
   return data ? { id: data.id, name: data.name, inviteCode: data.invite_code } : null;
 }
 
+/** Cambia il nome dell'azienda (mostrato nella Home al posto di "Turnibar"). Solo il titolare può usarla. */
+export async function updateCompanyName(companyId: string, name: string): Promise<void> {
+  const { error } = await supabase.from('companies').update({ name }).eq('id', companyId);
+  if (error) throw error;
+}
+
 function generateInviteCode(): string {
   const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
   let code = '';
