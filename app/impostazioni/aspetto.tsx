@@ -12,6 +12,7 @@ import { ShopSettings } from '@/src/models';
 import { showAlert } from '@/src/utils/alert';
 import { useThemeStore } from '@/src/store/themeStore';
 import { useCurrentAuth } from '@/src/context/AuthContext';
+import { strings } from '@/src/i18n/strings';
 
 const DEFAULT_COLOR = '#4F46E5';
 const MIN_FONT_SCALE = 0.85;
@@ -26,7 +27,7 @@ const FONT_COLOR_OPTIONS: { label: string; hex: string }[] = [
 export default function AppearanceScreen() {
   const { profile, reloadProfile } = useCurrentAuth();
   const isOwner = profile?.role === 'owner';
-  const { settings, reload: reloadSettings } = useShopSettings();
+  const { settings, loading: settingsLoading, reload: reloadSettings } = useShopSettings();
   const bumpTheme = useThemeStore((s) => s.bump);
 
   // Fonte di verità per le modifiche in corso: si aggiorna in modo sincrono ad ogni scelta
@@ -103,7 +104,11 @@ export default function AppearanceScreen() {
 
   return (
     <ScreenContainer>
-      {isOwner && (
+      {isOwner && settingsLoading && (
+        <Text style={styles.hint}>{strings.common.loading}</Text>
+      )}
+
+      {isOwner && !settingsLoading && (
         <>
           <Text style={styles.sectionTitle}>Colori</Text>
           <Text style={styles.hint}>

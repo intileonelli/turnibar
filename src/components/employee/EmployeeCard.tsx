@@ -22,7 +22,10 @@ export function EmployeeCard({ employee, role, secondaryRole, preferredCategoryN
   return (
     <Card onPress={onPress}>
       <View style={styles.headerRow}>
-        <Text style={styles.name}>{employee.name}</Text>
+        <View style={styles.nameRow}>
+          <View style={[styles.colorDot, { backgroundColor: employee.color }]} />
+          <Text style={styles.name}>{employee.name}</Text>
+        </View>
         {!employee.active && <Badge label="Non attivo" tone="warning" />}
       </View>
       <View style={styles.rolesRow}>
@@ -48,6 +51,16 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 6,
+  },
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  colorDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
   },
   name: {
     fontSize: 16,
