@@ -2,12 +2,20 @@ import { Text, View, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ScreenContainer } from '@/src/components/shared/ScreenContainer';
 import { Button } from '@/src/components/shared/Button';
-import { IconTile } from '@/src/components/shared/IconTile';
+import { IconTile, IconTileProps } from '@/src/components/shared/IconTile';
 import { colors } from '@/src/components/shared/colors';
 import { NAV_ICONS } from '@/src/constants/navIcons';
 import { useCompany } from '@/src/hooks/useCompany';
 import { strings } from '@/src/i18n/strings';
 import { useCurrentAuth } from '@/src/context/AuthContext';
+
+const TILES_PER_ROW = 3;
+
+function chunk<T>(items: T[], size: number): T[][] {
+  const rows: T[][] = [];
+  for (let i = 0; i < items.length; i += size) rows.push(items.slice(i, i + size));
+  return rows;
+}
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -16,6 +24,17 @@ export default function HomeScreen() {
   const isOwner = profile?.role === 'owner';
   const isFounder = !!company && session?.user.id === company.founderProfileId;
   const roleLabel = isFounder ? 'Titolare' : isOwner ? 'Amministratore' : 'Dipendente';
+
+  const tiles: (Omit<IconTileProps, 'onPress'> & { route: string })[] = [
+    ...(isOwner ? [{ icon: NAV_ICONS.dipendenti, label: 'Dipendenti', route: '/dipendenti' }] : []),
+    ...(isOwner ? [{ icon: NAV_ICONS.negozio, label: 'Negozio', route: '/negozio' }] : []),
+    { icon: NAV_ICONS.calendario, label: 'Turni', route: '/calendario' },
+    { icon: NAV_ICONS.ferie, label: 'Ferie', route: '/ferie' },
+    { icon: NAV_ICONS.impostazioni, label: 'Impostazioni', route: '/impostazioni' },
+  ];
+  // Righe da 3 e poi da 2 (effetto "a nido d'ape") invece di lasciare che vadano a capo da sole,
+  // che con larghezze diverse dello schermo può spezzare le righe in modo imprevedibile.
+  const tileRows = chunk(tiles, TILES_PER_ROW);
 
   return (
     <ScreenContainer scroll={false} style={styles.container}>
@@ -27,19 +46,13 @@ export default function HomeScreen() {
         <Text style={styles.title}>{company?.name ?? strings.home.title}</Text>
 
         <View style={styles.grid}>
-          {isOwner && (
-            <IconTile icon={NAV_ICONS.dipendenti} label="Dipendenti" onPress={() => router.push('/dipendenti')} />
-          )}
-          {isOwner && (
-            <IconTile icon={NAV_ICONS.negozio} label="Negozio" onPress={() => router.push('/negozio')} />
-          )}
-          <IconTile icon={NAV_ICONS.calendario} label="Calendario" onPress={() => router.push('/calendario')} />
-          <IconTile icon={NAV_ICONS.ferie} label="Ferie" onPress={() => router.push('/ferie')} />
-          <IconTile
-            icon={NAV_ICONS.impostazioni}
-            label="Impostazioni"
-            onPress={() => router.push('/impostazioni')}
-          />
+          {tileRows.map((row, rowIndex) => (
+            <View key={rowIndex} style={styles.row}>
+              {row.map((tile) => (
+                <IconTile key={tile.route} icon={tile.icon} label={tile.label} onPress={() => router.push(tile.route)} />
+              ))}
+            </View>
+          ))}
         </View>
       </View>
 
@@ -84,8 +97,10 @@ const styles = StyleSheet.create({
     textAlign: 'right',
   },
   grid: {
+    gap: 16,
+  },
+  row: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
     justifyContent: 'center',
     gap: 16,
   },

@@ -43,8 +43,12 @@ function AppTabs() {
     <View style={[{ flex: 1 }, zoomStyle()]}>
       <Tabs
         screenOptions={{
-          headerStyle: { backgroundColor: colors.surface },
+          // Sfondo trasparente invece del bianco fisso: con un colore testo personalizzato
+          // bianco, una casella bianca dietro renderebbe illeggibili sia il titolo in alto che
+          // le icone in basso.
+          headerStyle: { backgroundColor: 'transparent' },
           headerTitleStyle: { color: colors.text },
+          tabBarStyle: { backgroundColor: 'transparent' },
           tabBarActiveTintColor: colors.primary,
           tabBarInactiveTintColor: colors.textMuted,
         }}

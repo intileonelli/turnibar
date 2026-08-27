@@ -189,16 +189,19 @@ const styles = StyleSheet.create({
     padding: 6,
     marginBottom: 6,
   },
+  // Colore fisso (non colors.text/textMuted): la card sotto resta sempre bianca a prescindere
+  // dal tema, quindi anche il testo qui sopra deve restare sempre leggibile su bianco, anche se
+  // il colore testo personale scelto altrove nell'app è bianco.
   shiftName: {
     fontSize: 10,
     fontWeight: '600',
-    color: colors.textMuted,
+    color: '#64748B',
     textAlign: 'center',
   },
   shiftTime: {
     fontSize: 13,
     fontWeight: '700',
-    color: colors.text,
+    color: '#0F172A',
     marginBottom: 4,
     textAlign: 'center',
   },

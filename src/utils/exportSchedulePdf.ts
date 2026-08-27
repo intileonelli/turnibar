@@ -21,24 +21,8 @@ function escapeHtml(value: string): string {
     .replace(/"/g, '&quot;');
 }
 
-/**
- * Genera una pagina HTML autonoma con i turni della settimana (una colonna per giorno) e apre
- * la finestra di stampa del browser, da cui si può salvare come PDF: nessuna libreria in più,
- * funziona in ogni browser. Costruita da zero (non è uno screenshot della schermata) perché il
- * calendario in app scorre orizzontalmente e usa componenti nativi non adatti alla stampa.
- */
-export function exportWeekAsPdf({
-  companyName,
-  weekStartDate,
-  shiftTemplates,
-  assignments,
-  employees,
-}: ExportScheduleParams): void {
-  if (Platform.OS !== 'web' || typeof window === 'undefined') {
-    showAlert('Non disponibile', 'Il download PDF è disponibile solo dalla versione web dell\'app.');
-    return;
-  }
-
+/** Contenuto (stile incluso) della pagina turni, riusato sia per l'anteprima sia per il PDF. */
+function buildScheduleHtml({ companyName, weekStartDate, shiftTemplates, assignments, employees }: ExportScheduleParams): string {
   const employeeById = new Map(employees.map((e) => [e.id, e]));
 
   const dayColumns = WEEKDAYS.map((weekday) => {
@@ -102,53 +86,82 @@ export function exportWeekAsPdf({
       </div>`;
   }).join('');
 
-  const html = `<!doctype html>
-<html lang="it">
-<head>
-<meta charset="utf-8">
-<title>Turni ${escapeHtml(formatDateLong(weekStartDate))}</title>
-<style>
-  @page { size: A4 landscape; margin: 12mm; }
-  * { box-sizing: border-box; }
-  body { font-family: -apple-system, Helvetica, Arial, sans-serif; margin: 0; padding: 0; color: #0F172A; }
-  h1 { font-size: 18px; margin: 0 0 4px; }
-  .subtitle { font-size: 12px; color: #64748B; margin: 0 0 16px; }
-  .week { display: flex; gap: 8px; align-items: flex-start; }
-  .day { flex: 1; min-width: 0; border: 1px solid #E2E8F0; border-radius: 8px; padding: 8px; }
-  .day-header { text-align: center; margin-bottom: 8px; }
-  .day-name { font-size: 12px; font-weight: 700; }
-  .day-date { font-size: 10px; color: #64748B; }
-  .shift { border: 1px solid #E2E8F0; border-radius: 6px; padding: 6px; margin-bottom: 6px; }
-  .shift-name { font-size: 9px; color: #64748B; text-align: center; }
-  .shift-time { font-size: 12px; font-weight: 700; text-align: center; margin-bottom: 4px; }
-  .chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 3px; margin-top: 2px; }
-  .chip { border-radius: 5px; padding: 2px 6px; font-size: 10px; font-weight: 700; }
-  .chip-empty { border: 1px dashed #94A3B8; color: #64748B; background: transparent; }
-  .empty { font-size: 10px; color: #94A3B8; text-align: center; margin-top: 8px; }
-  @media print {
-    .print-hint { display: none; }
-  }
-  .print-hint { text-align: center; font-size: 12px; color: #64748B; margin-top: 16px; }
-</style>
-</head>
-<body>
-  <h1>${escapeHtml(companyName)}</h1>
-  <p class="subtitle">Turni della settimana del ${escapeHtml(formatDateLong(weekStartDate))}</p>
-  <div class="week">${dayColumns}</div>
-  <p class="print-hint">Scegli "Salva come PDF" nella finestra di stampa per scaricare il file.</p>
-</body>
-</html>`;
+  return `
+    <style>
+      .turnibar-export * { box-sizing: border-box; }
+      .turnibar-export { font-family: -apple-system, Helvetica, Arial, sans-serif; color: #0F172A; background: #FFFFFF; padding: 20px; width: 1400px; }
+      .turnibar-export h1 { font-size: 22px; margin: 0 0 4px; }
+      .turnibar-export .subtitle { font-size: 14px; color: #64748B; margin: 0 0 18px; }
+      .turnibar-export .week { display: flex; gap: 10px; align-items: flex-start; }
+      .turnibar-export .day { flex: 1; min-width: 0; border: 1px solid #E2E8F0; border-radius: 8px; padding: 8px; }
+      .turnibar-export .day-header { text-align: center; margin-bottom: 8px; }
+      .turnibar-export .day-name { font-size: 13px; font-weight: 700; }
+      .turnibar-export .day-date { font-size: 11px; color: #64748B; }
+      .turnibar-export .shift { border: 1px solid #E2E8F0; border-radius: 6px; padding: 6px; margin-bottom: 6px; }
+      .turnibar-export .shift-name { font-size: 10px; color: #64748B; text-align: center; }
+      .turnibar-export .shift-time { font-size: 13px; font-weight: 700; text-align: center; margin-bottom: 4px; }
+      .turnibar-export .chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 3px; margin-top: 2px; }
+      .turnibar-export .chip { border-radius: 5px; padding: 3px 7px; font-size: 11px; font-weight: 700; }
+      .turnibar-export .chip-empty { border: 1px dashed #94A3B8; color: #64748B; background: transparent; }
+      .turnibar-export .empty { font-size: 11px; color: #94A3B8; text-align: center; margin-top: 8px; }
+    </style>
+    <div class="turnibar-export">
+      <h1>${escapeHtml(companyName)}</h1>
+      <p class="subtitle">Turni della settimana del ${escapeHtml(formatDateLong(weekStartDate))}</p>
+      <div class="week">${dayColumns}</div>
+    </div>`;
+}
 
-  const printWindow = window.open('', '_blank');
-  if (!printWindow) {
-    showAlert('Popup bloccato', 'Consenti i popup per questo sito per scaricare il PDF dei turni.');
+/**
+ * Genera un vero file PDF (colori dei dipendenti inclusi) e lo scarica direttamente, senza
+ * passare dalla finestra di stampa del browser: utile perché la stampa di sfondo/colori è
+ * disattivata di default nella maggior parte dei browser (l'utente dovrebbe attivarla a mano
+ * ogni volta), e su telefono il flusso "stampa in PDF" è scomodo. Si disegna la pagina fuori
+ * schermo, la si trasforma in immagine (html2canvas) e la si incolla in un PDF (jsPDF).
+ */
+export async function exportWeekAsPdf(params: ExportScheduleParams): Promise<void> {
+  if (Platform.OS !== 'web' || typeof window === 'undefined' || typeof document === 'undefined') {
+    showAlert('Non disponibile', 'Il download PDF è disponibile solo dalla versione web dell\'app.');
     return;
   }
-  printWindow.document.open();
-  printWindow.document.write(html);
-  printWindow.document.close();
-  printWindow.focus();
-  // document.write è asincrono per il rendering: un breve ritardo evita di aprire la finestra
-  // di stampa prima che il contenuto sia effettivamente disegnato.
-  setTimeout(() => printWindow.print(), 300);
+
+  const container = document.createElement('div');
+  container.style.position = 'fixed';
+  container.style.top = '0';
+  container.style.left = '-10000px';
+  container.style.zIndex = '-1';
+  container.innerHTML = buildScheduleHtml(params);
+  document.body.appendChild(container);
+
+  try {
+    const [{ default: html2canvas }, { jsPDF }] = await Promise.all([import('html2canvas'), import('jspdf')]);
+    // Un frame di respiro perché il layout appena inserito sia effettivamente disegnato prima
+    // dello screenshot.
+    await new Promise((resolve) => requestAnimationFrame(() => resolve(undefined)));
+
+    const canvas = await html2canvas(container, { scale: 2, backgroundColor: '#FFFFFF' });
+    const imgData = canvas.toDataURL('image/png');
+
+    const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    const margin = 8;
+    const maxWidth = pageWidth - margin * 2;
+    const maxHeight = pageHeight - margin * 2;
+    const imgRatio = canvas.width / canvas.height;
+    let renderWidth = maxWidth;
+    let renderHeight = renderWidth / imgRatio;
+    if (renderHeight > maxHeight) {
+      renderHeight = maxHeight;
+      renderWidth = renderHeight * imgRatio;
+    }
+    const x = (pageWidth - renderWidth) / 2;
+    const y = margin;
+    pdf.addImage(imgData, 'PNG', x, y, renderWidth, renderHeight);
+    pdf.save(`turni-${params.weekStartDate}.pdf`);
+  } catch (err) {
+    showAlert('Errore', err instanceof Error ? err.message : String(err));
+  } finally {
+    document.body.removeChild(container);
+  }
 }

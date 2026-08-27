@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { colors } from './colors';
 
-interface IconTileProps {
+export interface IconTileProps {
   icon: keyof typeof Ionicons.glyphMap;
   label: string;
   onPress: () => void;
