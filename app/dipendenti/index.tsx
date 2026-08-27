@@ -35,7 +35,9 @@ export default function EmployeeListScreen() {
             employee={item}
             role={roleById.get(item.roleId)}
             secondaryRole={item.secondaryRoleId ? roleById.get(item.secondaryRoleId) : undefined}
-            preferredCategoryName={item.preferredCategoryId ? categoryById.get(item.preferredCategoryId)?.name : undefined}
+            preferredCategoryNames={item.preferredCategoryIds
+              ?.map((id) => categoryById.get(id)?.name)
+              .filter((name): name is string => !!name)}
             onPress={() => router.push(`/dipendenti/${item.id}`)}
           />
         )}

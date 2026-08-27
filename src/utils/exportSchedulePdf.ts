@@ -1,4 +1,6 @@
 import { Platform } from 'react-native';
+import html2canvas from 'html2canvas';
+import { jsPDF } from 'jspdf';
 import { Employee, ShiftAssignment, ShiftTemplate, WEEKDAYS, WEEKDAY_LABELS } from '@/src/models';
 import { dateForWeekday, timeToMinutes } from '@/src/engine';
 import { formatDateLong } from '@/src/utils/date';
@@ -134,7 +136,6 @@ export async function exportWeekAsPdf(params: ExportScheduleParams): Promise<voi
   document.body.appendChild(container);
 
   try {
-    const [{ default: html2canvas }, { jsPDF }] = await Promise.all([import('html2canvas'), import('jspdf')]);
     // Un frame di respiro perché il layout appena inserito sia effettivamente disegnato prima
     // dello screenshot.
     await new Promise((resolve) => requestAnimationFrame(() => resolve(undefined)));

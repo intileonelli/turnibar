@@ -311,13 +311,13 @@ describe('generateSchedule', () => {
       id: 'anna',
       name: 'Anna',
       roleId: ROLE_COMMESSO.id,
-      preferredCategoryId: CATEGORY_SERA,
+      preferredCategoryIds: [CATEGORY_SERA],
     });
     const bruno = makeEmployee({
       id: 'bruno',
       name: 'Bruno',
       roleId: ROLE_COMMESSO.id,
-      preferredCategoryId: CATEGORY_MATTINA,
+      preferredCategoryIds: [CATEGORY_MATTINA],
     });
 
     const shiftTemplates: ShiftTemplate[] = [
@@ -894,14 +894,14 @@ describe('generateSchedule', () => {
       id: 'anna',
       name: 'Anna',
       roleId: ROLE_COMMESSO.id,
-      preferredCategoryId: CATEGORY_SERA,
+      preferredCategoryIds: [CATEGORY_SERA],
     });
     // Bruno: ruolo principale "cassiere" (prima scelta, idoneità migliore), ma preferisce la mattina.
     const bruno = makeEmployee({
       id: 'bruno',
       name: 'Bruno',
       roleId: ROLE_CASSIERE.id,
-      preferredCategoryId: CATEGORY_MATTINA,
+      preferredCategoryIds: [CATEGORY_MATTINA],
     });
 
     const result = generateSchedule(
@@ -1035,7 +1035,7 @@ describe('generateSchedule', () => {
       id: 'anna',
       name: 'Anna',
       roleId: ROLE_COMMESSO.id,
-      preferredCategoryId: CATEGORY_SERA,
+      preferredCategoryIds: [CATEGORY_SERA],
     });
     const bruno = makeEmployee({ id: 'bruno', name: 'Bruno', roleId: ROLE_COMMESSO.id });
     const categoryRequests: CategoryRequest[] = [

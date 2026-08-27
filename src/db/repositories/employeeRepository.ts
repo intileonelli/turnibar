@@ -13,7 +13,7 @@ interface EmployeeRow {
   max_weekly_shifts: number | null;
   max_weekly_days: number | null;
   preferred_weekdays: number[] | null;
-  preferred_category_id: string | null;
+  preferred_category_ids: string[] | null;
   pinned_shift_template_ids: string[] | null;
   max_weekly_shifts_by_preference: Employee['maxWeeklyShiftsByCategory'] | null;
   active: boolean;
@@ -33,7 +33,7 @@ function mapRow(row: EmployeeRow): Employee {
     maxWeeklyShifts: row.max_weekly_shifts ?? undefined,
     maxWeeklyDays: row.max_weekly_days ?? undefined,
     preferredWeekdays: row.preferred_weekdays?.length ? (row.preferred_weekdays as Weekday[]) : undefined,
-    preferredCategoryId: row.preferred_category_id ?? undefined,
+    preferredCategoryIds: row.preferred_category_ids?.length ? row.preferred_category_ids : undefined,
     pinnedShiftTemplateIds: row.pinned_shift_template_ids?.length
       ? row.pinned_shift_template_ids
       : undefined,
@@ -55,7 +55,7 @@ function toRow(input: Omit<Employee, 'id'>) {
     max_weekly_shifts: input.maxWeeklyShifts ?? null,
     max_weekly_days: input.maxWeeklyDays ?? null,
     preferred_weekdays: input.preferredWeekdays?.length ? input.preferredWeekdays : null,
-    preferred_category_id: input.preferredCategoryId ?? null,
+    preferred_category_ids: input.preferredCategoryIds?.length ? input.preferredCategoryIds : null,
     pinned_shift_template_ids: input.pinnedShiftTemplateIds?.length
       ? input.pinnedShiftTemplateIds
       : null,

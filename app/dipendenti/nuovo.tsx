@@ -5,6 +5,7 @@ import { ScreenContainer } from '@/src/components/shared/ScreenContainer';
 import { TextField } from '@/src/components/shared/TextField';
 import { Chip } from '@/src/components/shared/Chip';
 import { Button } from '@/src/components/shared/Button';
+import { PreferredCategoriesPicker } from '@/src/components/employee/PreferredCategoriesPicker';
 import { colors } from '@/src/components/shared/colors';
 import { showAlert } from '@/src/utils/alert';
 import { timeToMinutes } from '@/src/engine';
@@ -38,7 +39,7 @@ export default function NewEmployeeScreen() {
   const [maxWeeklyShifts, setMaxWeeklyShifts] = useState('');
   const [maxWeeklyDays, setMaxWeeklyDays] = useState('');
   const [preferredWeekdays, setPreferredWeekdays] = useState<Set<Weekday>>(new Set());
-  const [preferredCategoryId, setPreferredCategoryId] = useState<string | null>(null);
+  const [preferredCategoryIds, setPreferredCategoryIds] = useState<string[]>([]);
   const [pinnedShiftTemplateIds, setPinnedShiftTemplateIds] = useState<Set<string>>(new Set());
   const [maxByCategory, setMaxByCategory] = useState<Record<string, string>>({});
   const [priority, setPriority] = useState<EmployeePriority>('normale');
@@ -132,7 +133,7 @@ export default function NewEmployeeScreen() {
         maxWeeklyShifts: maxWeeklyShifts ? Number(maxWeeklyShifts) : undefined,
         maxWeeklyDays: maxDays,
         preferredWeekdays: preferredWeekdays.size > 0 ? [...preferredWeekdays] : undefined,
-        preferredCategoryId: preferredCategoryId ?? undefined,
+        preferredCategoryIds: preferredCategoryIds.length > 0 ? preferredCategoryIds : undefined,
         pinnedShiftTemplateIds: pinnedShiftTemplateIds.size > 0 ? [...pinnedShiftTemplateIds] : undefined,
         maxWeeklyShiftsByCategory:
           Object.keys(maxWeeklyShiftsByCategory).length > 0 ? maxWeeklyShiftsByCategory : undefined,
@@ -251,17 +252,10 @@ export default function NewEmployeeScreen() {
       </View>
 
       <Text style={styles.label}>{strings.employees.preference}</Text>
-      <View style={styles.chipsRow}>
-        <Chip label="Nessuna" selected={preferredCategoryId === null} onPress={() => setPreferredCategoryId(null)} />
-        {categories.map((category) => (
-          <Chip
-            key={category.id}
-            label={category.name}
-            selected={preferredCategoryId === category.id}
-            onPress={() => setPreferredCategoryId(category.id)}
-          />
-        ))}
-      </View>
+      <Text style={[styles.hint, styles.hintNoOffset]}>
+        Puoi scegliere più fasce: la prima toccata è la più importante.
+      </Text>
+      <PreferredCategoriesPicker categories={categories} value={preferredCategoryIds} onChange={setPreferredCategoryIds} />
 
       <Text style={styles.label}>Priorità nella generazione turni</Text>
       <Text style={styles.hint}>
@@ -325,6 +319,9 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     marginTop: -12,
     marginBottom: 16,
+  },
+  hintNoOffset: {
+    marginTop: 0,
   },
   chipsRow: {
     flexDirection: 'row',

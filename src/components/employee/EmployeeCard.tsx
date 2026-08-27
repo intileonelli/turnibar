@@ -8,11 +8,12 @@ interface EmployeeCardProps {
   employee: Employee;
   role?: Role;
   secondaryRole?: Role;
-  preferredCategoryName?: string;
+  /** Nomi delle fasce preferite, in ordine di importanza. */
+  preferredCategoryNames?: string[];
   onPress: () => void;
 }
 
-export function EmployeeCard({ employee, role, secondaryRole, preferredCategoryName, onPress }: EmployeeCardProps) {
+export function EmployeeCard({ employee, role, secondaryRole, preferredCategoryNames, onPress }: EmployeeCardProps) {
   const hoursParts: string[] = [];
   if (employee.weeklyContractHours !== undefined) hoursParts.push(`${employee.weeklyContractHours}h contrattuali`);
   if (employee.maxWeeklyHours !== undefined) hoursParts.push(`max ${employee.maxWeeklyHours}h`);
@@ -35,7 +36,9 @@ export function EmployeeCard({ employee, role, secondaryRole, preferredCategoryN
       <Text style={styles.details}>
         {hoursParts.length > 0 ? hoursParts.join(' · ') : 'Nessun limite di ore/turni/giorni'}
       </Text>
-      <Text style={styles.details}>Preferenza: {preferredCategoryName ?? 'Nessuna'}</Text>
+      <Text style={styles.details}>
+        Preferenza: {preferredCategoryNames?.length ? preferredCategoryNames.join(' > ') : 'Nessuna'}
+      </Text>
       {employee.preferredWeekdays && employee.preferredWeekdays.length > 0 && (
         <Text style={styles.details}>
           Giorni preferiti: {employee.preferredWeekdays.map((d) => WEEKDAY_LABELS_SHORT[d]).join(', ')}

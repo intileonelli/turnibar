@@ -145,7 +145,7 @@ describe('validateAssignment', () => {
   });
 
   it('segnala come violazione soft una preferenza di fascia oraria non rispettata', () => {
-    const anna = makeEmployee({ id: 'anna', name: 'Anna', roleId: ROLE_COMMESSO, preferredCategoryId: CATEGORY_SERA });
+    const anna = makeEmployee({ id: 'anna', name: 'Anna', roleId: ROLE_COMMESSO, preferredCategoryIds: [CATEGORY_SERA] });
 
     const violations = validateAssignment({
       employee: anna,

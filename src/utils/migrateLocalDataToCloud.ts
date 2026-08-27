@@ -91,6 +91,8 @@ export async function migrateLocalDataToCloud(log: Log): Promise<void> {
       }
     }
 
+    const legacyPreferredCategoryId = categoryIdForLegacyPreference(employee.preference);
+
     const created = await cloudRepos.employeeRepository.createEmployee({
       name: employee.name,
       roleId: newRoleId,
@@ -100,7 +102,7 @@ export async function migrateLocalDataToCloud(log: Log): Promise<void> {
       maxWeeklyShifts: employee.maxWeeklyShifts,
       maxWeeklyDays: employee.maxWeeklyDays,
       preferredWeekdays: employee.preferredWeekdays,
-      preferredCategoryId: categoryIdForLegacyPreference(employee.preference),
+      preferredCategoryIds: legacyPreferredCategoryId ? [legacyPreferredCategoryId] : undefined,
       pinnedShiftTemplateIds: employee.pinnedShiftTemplateIds
         ?.map((t) => templateIdMap.get(t))
         .filter((t): t is string => !!t),

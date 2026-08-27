@@ -31,8 +31,11 @@ export interface Employee {
   maxWeeklyDays?: number;
   /** Giorni della settimana preferiti (vincolo soft), opzionale: nessuna preferenza se vuoto/non impostato. */
   preferredWeekdays?: Weekday[];
-  /** Fascia oraria preferita (id di una fascia del negozio), vincolo soft. Non impostata = nessuna preferenza. */
-  preferredCategoryId?: string;
+  /**
+   * Fasce orarie preferite (id di fasce del negozio), vincolo soft, in ordine di importanza: la
+   * prima (indice 0) è la più importante. Non impostata/vuota = nessuna preferenza.
+   */
+  preferredCategoryIds?: string[];
   /**
    * Turni tipo a cui il dipendente va assegnato con priorità assoluta quando è idoneo (es.
    * "Inti il martedì fa sempre Sera 1"). Se il dipendente non è disponibile (ferie,

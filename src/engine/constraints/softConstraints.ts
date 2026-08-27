@@ -3,8 +3,20 @@ import { SolverContext, SolverState } from '../state';
 import { Slot } from '../types';
 
 export function preferenceMatches(employee: Employee, slot: Pick<Slot, 'categoryId'>): boolean {
-  if (!employee.preferredCategoryId) return true;
-  return employee.preferredCategoryId === slot.categoryId;
+  if (!employee.preferredCategoryIds?.length) return true;
+  return employee.preferredCategoryIds.includes(slot.categoryId);
+}
+
+/**
+ * Punteggio di preferenza per una fascia: più alto quanto più la fascia è in cima alla lista
+ * (indice 0 = più importante). -1 se il dipendente ha delle preferenze ma questa fascia non è
+ * tra quelle; 0 se non ha impostato nessuna preferenza (neutro, non gioca né a favore né contro).
+ */
+function preferenceRank(employee: Employee, categoryId: string): number {
+  const ids = employee.preferredCategoryIds;
+  if (!ids?.length) return 0;
+  const index = ids.indexOf(categoryId);
+  return index === -1 ? -1 : ids.length - index;
 }
 
 /** Indice del ruolo dello slot coperto dal dipendente (principale o secondario) e se è avvenuto tramite il ruolo secondario. */
@@ -41,10 +53,7 @@ function rankCandidate(employee: Employee, slot: Slot, state: SolverState, conte
   const requestedCategoryForDate = context.categoryRequestByEmployeeAndDate.get(employee.id)?.get(slot.date);
   const dateCategoryMatch = requestedCategoryForDate !== undefined && requestedCategoryForDate === slot.categoryId ? 1 : 0;
 
-  let preference = 0;
-  if (employee.preferredCategoryId) {
-    preference = employee.preferredCategoryId === slot.categoryId ? 1 : -1;
-  }
+  const preference = preferenceRank(employee, slot.categoryId);
 
   const { priorityIndex, usedSecondary } = matchRolePriority(employee, slot);
   const role = -(priorityIndex * 2 + (usedSecondary ? 1 : 0));
