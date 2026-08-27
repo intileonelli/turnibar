@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Platform, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { ScreenContainer } from '@/src/components/shared/ScreenContainer';
 import { Button } from '@/src/components/shared/Button';
@@ -13,9 +13,11 @@ import { useEmployees } from '@/src/hooks/useEmployees';
 import { useRoles } from '@/src/hooks/useRoles';
 import { useShiftTemplates } from '@/src/hooks/useShiftTemplates';
 import { useShopSettings } from '@/src/hooks/useShopSettings';
+import { useCompany } from '@/src/hooks/useCompany';
 import { unavailabilityRepository, timeOffRepository } from '@/src/db/repositories';
 import { ShiftAssignment, ShiftTemplate, TimeOff, Unavailability } from '@/src/models';
 import { formatDateLong } from '@/src/utils/date';
+import { exportWeekAsPdf } from '@/src/utils/exportSchedulePdf';
 import { strings } from '@/src/i18n/strings';
 import { useCurrentAuth } from '@/src/context/AuthContext';
 
@@ -36,6 +38,7 @@ export default function CalendarScreen() {
   const { roles } = useRoles();
   const { shiftTemplates } = useShiftTemplates();
   const { settings: shopSettings } = useShopSettings();
+  const { company } = useCompany();
 
   const [unavailabilities, setUnavailabilities] = useState<Unavailability[]>([]);
   const [timeOff, setTimeOff] = useState<TimeOff[]>([]);
@@ -95,6 +98,16 @@ export default function CalendarScreen() {
     setPickerTarget(null);
   };
 
+  const handleExportPdf = () => {
+    exportWeekAsPdf({
+      companyName: company?.name ?? strings.home.title,
+      weekStartDate,
+      shiftTemplates,
+      assignments,
+      employees,
+    });
+  };
+
   return (
     <ScreenContainer>
       <View style={styles.weekNav}>
@@ -117,6 +130,12 @@ export default function CalendarScreen() {
           </View>
         )}
       </View>
+
+      {Platform.OS === 'web' && schedule && (
+        <View style={styles.pdfRow}>
+          <Button label="Scarica PDF" variant="secondary" onPress={handleExportPdf} />
+        </View>
+      )}
 
       {!schedule && <Text style={styles.empty}>{strings.calendar.noSchedule}</Text>}
 
@@ -173,6 +192,9 @@ const styles = StyleSheet.create({
   },
   actionButton: {
     flex: 1,
+  },
+  pdfRow: {
+    marginBottom: 12,
   },
   empty: {
     textAlign: 'center',
