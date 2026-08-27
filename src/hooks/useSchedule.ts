@@ -5,6 +5,7 @@ import {
   employeeRepository,
   roleRepository,
   scheduleRepository,
+  shiftDayOverrideRepository,
   shiftTemplateRepository,
   shopRepository,
   timeOffRepository,
@@ -64,6 +65,9 @@ export function useSchedule(weekStartDate: string) {
 
       const status: ScheduleStatus = result.unresolvedShifts.length > 0 ? 'incomplete' : 'complete';
       await scheduleRepository.saveGeneratedSchedule(weekStartDate, status, result.assignments);
+      // Le modifiche di orario/turni nascosti fatte "a mano" per singoli giorni valgono solo
+      // fino alla prossima generazione: da qui in poi la settimana torna quella standard.
+      await shiftDayOverrideRepository.clearOverridesForWeek(weekStartDate);
       await reload();
       return result;
     } finally {

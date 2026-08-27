@@ -7,4 +7,5 @@ export * as categoryRequestRepository from './categoryRequestRepository';
 export * as shopRepository from './shopRepository';
 export * as shiftTemplateRepository from './shiftTemplateRepository';
 export * as scheduleRepository from './scheduleRepository';
+export * as shiftDayOverrideRepository from './shiftDayOverrideRepository';
 export * as membershipRepository from './membershipRepository';

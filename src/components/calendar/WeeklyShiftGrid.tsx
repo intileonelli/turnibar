@@ -1,19 +1,24 @@
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { Employee, ShiftAssignment, ShiftTemplate, WEEKDAY_LABELS_SHORT, WEEKDAYS } from '@/src/models';
+import { Employee, ShiftAssignment, ShiftDayOverride, ShiftTemplate, WEEKDAY_LABELS_SHORT, WEEKDAYS } from '@/src/models';
 import { dateForWeekday, timeToMinutes } from '@/src/engine';
 import { formatDateLong } from '@/src/utils/date';
 import { getContrastTextColor } from '@/src/utils/color';
 import { colors } from '@/src/components/shared/colors';
 
-const COLUMN_WIDTH = 190;
+const COLUMN_WIDTH = 210;
 
 interface WeeklyShiftGridProps {
   weekStartDate: string;
   shiftTemplates: ShiftTemplate[];
   assignments: ShiftAssignment[];
   employees: Employee[];
+  /** Eccezioni di orario/turno nascosto per questa settimana, chiave `${shiftTemplateId}-${date}`. */
+  overridesByKey?: Map<string, ShiftDayOverride>;
+  /** Se il titolare può modificare l'orario di un turno o nasconderlo per un giorno specifico. */
+  canEditDay?: boolean;
   onAssignmentPress: (assignment: ShiftAssignment, template: ShiftTemplate) => void;
   onEmptySlotPress: (template: ShiftTemplate, date: string, roleIds: string[]) => void;
+  onEditShiftDay?: (template: ShiftTemplate, date: string) => void;
 }
 
 export function WeeklyShiftGrid({
@@ -21,8 +26,11 @@ export function WeeklyShiftGrid({
   shiftTemplates,
   assignments,
   employees,
+  overridesByKey,
+  canEditDay = false,
   onAssignmentPress,
   onEmptySlotPress,
+  onEditShiftDay,
 }: WeeklyShiftGridProps) {
   const employeeById = new Map(employees.map((e) => [e.id, e]));
 
@@ -55,16 +63,28 @@ export function WeeklyShiftGrid({
               )}
 
               {templatesForDay.map((template) => {
+                const override = overridesByKey?.get(`${template.id}-${date}`);
+                if (override?.hidden) return null;
+
                 const cellAssignments = assignments.filter(
                   (a) => a.shiftTemplateId === template.id && a.date === date
                 );
+                const displayStart = override?.startTime ?? template.startTime;
+                const displayEnd = override?.endTime ?? template.endTime;
+                const hasTimeOverride = !!(override?.startTime || override?.endTime);
 
                 return (
                   <View key={template.id} style={styles.card}>
-                    <Text style={styles.shiftName}>{template.name}</Text>
-                    <Text style={styles.shiftTime}>
-                      {template.startTime} - {template.endTime}
-                    </Text>
+                    <Pressable
+                      disabled={!canEditDay}
+                      onPress={() => onEditShiftDay?.(template, date)}
+                    >
+                      <Text style={styles.shiftName}>{template.name}</Text>
+                      <Text style={styles.shiftTime}>
+                        {displayStart} - {displayEnd}
+                        {hasTimeOverride ? ' ✎' : ''}
+                      </Text>
+                    </Pressable>
 
                     {template.requirements.map((req, reqIndex) => {
                       const reqKey = req.roleIds.join(',');
@@ -199,7 +219,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   shiftTime: {
-    fontSize: 13,
+    fontSize: 15,
     fontWeight: '700',
     color: '#0F172A',
     marginBottom: 4,
@@ -221,7 +241,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   employeeChipText: {
-    fontSize: 15,
+    fontSize: 17,
     fontWeight: '700',
     textAlign: 'center',
   },

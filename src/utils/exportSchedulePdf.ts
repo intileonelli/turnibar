@@ -97,15 +97,15 @@ function buildScheduleHtml({ companyName, weekStartDate, shiftTemplates, assignm
       .turnibar-export .week { display: flex; gap: 10px; align-items: flex-start; }
       .turnibar-export .day { flex: 1; min-width: 0; border: 1px solid #E2E8F0; border-radius: 8px; padding: 8px; }
       .turnibar-export .day-header { text-align: center; margin-bottom: 8px; }
-      .turnibar-export .day-name { font-size: 13px; font-weight: 700; }
-      .turnibar-export .day-date { font-size: 11px; color: #64748B; }
-      .turnibar-export .shift { border: 1px solid #E2E8F0; border-radius: 6px; padding: 6px; margin-bottom: 6px; }
-      .turnibar-export .shift-name { font-size: 10px; color: #64748B; text-align: center; }
-      .turnibar-export .shift-time { font-size: 13px; font-weight: 700; text-align: center; margin-bottom: 4px; }
-      .turnibar-export .chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 3px; margin-top: 2px; }
-      .turnibar-export .chip { border-radius: 5px; padding: 3px 7px; font-size: 11px; font-weight: 700; }
+      .turnibar-export .day-name { font-size: 16px; font-weight: 700; }
+      .turnibar-export .day-date { font-size: 13px; color: #64748B; }
+      .turnibar-export .shift { border: 1px solid #E2E8F0; border-radius: 6px; padding: 7px; margin-bottom: 7px; }
+      .turnibar-export .shift-name { font-size: 12px; color: #64748B; text-align: center; }
+      .turnibar-export .shift-time { font-size: 17px; font-weight: 700; text-align: center; margin-bottom: 5px; }
+      .turnibar-export .chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px; margin-top: 3px; }
+      .turnibar-export .chip { border-radius: 5px; padding: 4px 8px; font-size: 15px; font-weight: 700; }
       .turnibar-export .chip-empty { border: 1px dashed #94A3B8; color: #64748B; background: transparent; }
-      .turnibar-export .empty { font-size: 11px; color: #94A3B8; text-align: center; margin-top: 8px; }
+      .turnibar-export .empty { font-size: 13px; color: #94A3B8; text-align: center; margin-top: 8px; }
     </style>
     <div class="turnibar-export">
       <h1>${escapeHtml(companyName)}</h1>

@@ -7,6 +7,7 @@ import { Badge } from '@/src/components/shared/Badge';
 import { colors } from '@/src/components/shared/colors';
 import { WeeklyShiftGrid } from '@/src/components/calendar/WeeklyShiftGrid';
 import { AssignmentPickerModal } from '@/src/components/calendar/AssignmentPickerModal';
+import { DayShiftOverrideModal } from '@/src/components/calendar/DayShiftOverrideModal';
 import { useScheduleStore } from '@/src/store/scheduleStore';
 import { useSchedule } from '@/src/hooks/useSchedule';
 import { useEmployees } from '@/src/hooks/useEmployees';
@@ -14,7 +15,8 @@ import { useRoles } from '@/src/hooks/useRoles';
 import { useShiftTemplates } from '@/src/hooks/useShiftTemplates';
 import { useShopSettings } from '@/src/hooks/useShopSettings';
 import { useCompany } from '@/src/hooks/useCompany';
-import { unavailabilityRepository, timeOffRepository } from '@/src/db/repositories';
+import { useShiftDayOverrides } from '@/src/hooks/useShiftDayOverrides';
+import { unavailabilityRepository, timeOffRepository, shiftDayOverrideRepository } from '@/src/db/repositories';
 import { ShiftAssignment, ShiftTemplate, TimeOff, Unavailability } from '@/src/models';
 import { formatDateLong } from '@/src/utils/date';
 import { exportWeekAsPdf } from '@/src/utils/exportSchedulePdf';
@@ -39,10 +41,18 @@ export default function CalendarScreen() {
   const { shiftTemplates } = useShiftTemplates();
   const { settings: shopSettings } = useShopSettings();
   const { company } = useCompany();
+  const { overrides, reload: reloadOverrides } = useShiftDayOverrides(weekStartDate);
 
   const [unavailabilities, setUnavailabilities] = useState<Unavailability[]>([]);
   const [timeOff, setTimeOff] = useState<TimeOff[]>([]);
   const [pickerTarget, setPickerTarget] = useState<PickerTarget | null>(null);
+  const [overrideTarget, setOverrideTarget] = useState<{ template: ShiftTemplate; date: string } | null>(null);
+  const [savingOverride, setSavingOverride] = useState(false);
+
+  const overridesByKey = new Map(overrides.map((o) => [`${o.shiftTemplateId}-${o.date}`, o]));
+  const currentOverride = overrideTarget
+    ? overridesByKey.get(`${overrideTarget.template.id}-${overrideTarget.date}`)
+    : undefined;
 
   useFocusEffect(
     useCallback(() => {
@@ -98,6 +108,57 @@ export default function CalendarScreen() {
     setPickerTarget(null);
   };
 
+  const handleEditShiftDay = (template: ShiftTemplate, date: string) => {
+    if (!isOwner) return;
+    setOverrideTarget({ template, date });
+  };
+
+  const handleSaveOverrideTime = async (startTime: string, endTime: string) => {
+    if (!overrideTarget) return;
+    setSavingOverride(true);
+    try {
+      await shiftDayOverrideRepository.upsertOverride({
+        shiftTemplateId: overrideTarget.template.id,
+        date: overrideTarget.date,
+        startTime,
+        endTime,
+        hidden: false,
+      });
+      await reloadOverrides();
+      setOverrideTarget(null);
+    } finally {
+      setSavingOverride(false);
+    }
+  };
+
+  const handleHideShiftDay = async () => {
+    if (!overrideTarget) return;
+    setSavingOverride(true);
+    try {
+      await shiftDayOverrideRepository.upsertOverride({
+        shiftTemplateId: overrideTarget.template.id,
+        date: overrideTarget.date,
+        hidden: true,
+      });
+      await reloadOverrides();
+      setOverrideTarget(null);
+    } finally {
+      setSavingOverride(false);
+    }
+  };
+
+  const handleRestoreShiftDay = async () => {
+    if (!overrideTarget) return;
+    setSavingOverride(true);
+    try {
+      await shiftDayOverrideRepository.clearOverride(overrideTarget.template.id, overrideTarget.date);
+      await reloadOverrides();
+      setOverrideTarget(null);
+    } finally {
+      setSavingOverride(false);
+    }
+  };
+
   const handleExportPdf = () => {
     exportWeekAsPdf({
       companyName: company?.name ?? strings.home.title,
@@ -144,8 +205,11 @@ export default function CalendarScreen() {
         shiftTemplates={shiftTemplates}
         assignments={assignments}
         employees={employees}
+        overridesByKey={overridesByKey}
+        canEditDay={isOwner}
         onAssignmentPress={handleAssignmentPress}
         onEmptySlotPress={handleEmptySlotPress}
+        onEditShiftDay={handleEditShiftDay}
       />
 
       <AssignmentPickerModal
@@ -164,6 +228,18 @@ export default function CalendarScreen() {
         allowMultipleShiftsPerDay={shopSettings.allowMultipleShiftsPerDay}
         onSelectEmployee={handleSelectEmployee}
         onRemove={pickerTarget?.currentAssignmentId ? handleRemove : undefined}
+      />
+
+      <DayShiftOverrideModal
+        visible={overrideTarget !== null}
+        template={overrideTarget?.template ?? null}
+        date={overrideTarget?.date ?? ''}
+        currentOverride={currentOverride}
+        saving={savingOverride}
+        onClose={() => setOverrideTarget(null)}
+        onSaveTime={handleSaveOverrideTime}
+        onHide={handleHideShiftDay}
+        onRestore={handleRestoreShiftDay}
       />
     </ScreenContainer>
   );

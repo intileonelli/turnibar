@@ -6,5 +6,6 @@ export * from './timeOff';
 export * from './categoryRequest';
 export * from './shop';
 export * from './shiftCategory';
+export * from './shiftDayOverride';
 export * from './schedule';
 export * from './violation';
