@@ -23,9 +23,8 @@ export function IconTile({ icon, label, onPress }: IconTileProps) {
 
 const styles = StyleSheet.create({
   tile: {
-    width: '30%',
+    width: 92,
     alignItems: 'center',
-    marginBottom: 20,
   },
   pressed: {
     opacity: 0.7,
@@ -37,6 +36,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 8,
+    overflow: 'hidden',
   },
   label: {
     fontSize: 12,

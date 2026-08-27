@@ -193,12 +193,14 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '600',
     color: colors.textMuted,
+    textAlign: 'center',
   },
   shiftTime: {
     fontSize: 13,
     fontWeight: '700',
     color: colors.text,
     marginBottom: 4,
+    textAlign: 'center',
   },
   roleBlock: {
     marginBottom: 2,
@@ -206,6 +208,7 @@ const styles = StyleSheet.create({
   chipsRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
+    justifyContent: 'center',
   },
   employeeChip: {
     borderRadius: 6,
@@ -215,8 +218,9 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   employeeChipText: {
-    fontSize: 13,
+    fontSize: 15,
     fontWeight: '700',
+    textAlign: 'center',
   },
   emptySlot: {
     borderWidth: 1,
@@ -231,5 +235,6 @@ const styles = StyleSheet.create({
   emptySlotText: {
     fontSize: 11,
     color: colors.textMuted,
+    textAlign: 'center',
   },
 });

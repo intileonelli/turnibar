@@ -19,13 +19,12 @@ export default function HomeScreen() {
 
   return (
     <ScreenContainer scroll={false} style={styles.container}>
-      <View>
+      <View style={styles.logoutCorner}>
+        <Button label="Logout" variant="danger" onPress={() => signOut()} />
+      </View>
+
+      <View style={styles.centerArea}>
         <Text style={styles.title}>{company?.name ?? strings.home.title}</Text>
-        {profile && (
-          <Text style={styles.account}>
-            Collegato come {profile.fullName} · {roleLabel}
-          </Text>
-        )}
 
         <View style={styles.grid}>
           {isOwner && (
@@ -42,40 +41,56 @@ export default function HomeScreen() {
             onPress={() => router.push('/impostazioni')}
           />
         </View>
-
-        <View style={styles.actions}>
-          <Button label="Esci" variant="danger" onPress={() => signOut()} />
-        </View>
       </View>
 
-      <Text style={styles.subtitleCorner}>{strings.home.subtitle}</Text>
+      <View style={styles.bottomCorner}>
+        <Text style={styles.subtitleCorner}>{strings.home.subtitle}</Text>
+        {profile && (
+          <Text style={styles.account}>
+            Collegato come {profile.fullName} · {roleLabel}
+          </Text>
+        )}
+      </View>
     </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    justifyContent: 'space-between',
+    position: 'relative',
+  },
+  logoutCorner: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    zIndex: 1,
+  },
+  centerArea: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   title: {
     fontSize: 28,
     fontWeight: '800',
     color: colors.text,
-    marginTop: 12,
+    textAlign: 'center',
+    marginBottom: 28,
   },
   account: {
     fontSize: 13,
     color: colors.textMuted,
     marginTop: 4,
-    marginBottom: 24,
+    textAlign: 'right',
   },
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
+    gap: 16,
   },
-  actions: {
-    marginTop: 8,
+  bottomCorner: {
+    alignItems: 'flex-end',
   },
   subtitleCorner: {
     fontSize: 12,

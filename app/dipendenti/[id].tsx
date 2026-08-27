@@ -200,8 +200,12 @@ export default function EditEmployeeScreen() {
       strings.employees.deleteConfirmTitle,
       strings.employees.deleteConfirmMessage,
       async () => {
-        await employeeRepository.deleteEmployee(employee.id);
-        router.back();
+        try {
+          await employeeRepository.deleteEmployee(employee.id);
+          router.back();
+        } catch (err) {
+          showAlert('Errore', err instanceof Error ? err.message : String(err));
+        }
       },
       strings.common.delete,
       true

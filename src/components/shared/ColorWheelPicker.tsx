@@ -41,9 +41,11 @@ export function ColorWheelPicker({ initialValue, onChange, onChangeComplete, siz
     onRelease: () => onChangeComplete(hsvToHex(hsvRef.current)),
   });
 
-  const trackWidth = size;
-  const updateFromBrightness = (x: number) => {
-    const v = Math.max(0, Math.min(1, x / trackWidth));
+  // Verticale, alta quanto la ruota, posizionata alla sua destra: il valore più alto (chiaro)
+  // sta in alto, il più basso (scuro) in basso, come nei selettori colore comuni.
+  const trackHeight = size;
+  const updateFromBrightness = (_x: number, y: number) => {
+    const v = Math.max(0, Math.min(1, 1 - y / trackHeight));
     const next = { ...hsvRef.current, v };
     hsvRef.current = next;
     setHsv(next);
@@ -63,17 +65,17 @@ export function ColorWheelPicker({ initialValue, onChange, onChangeComplete, siz
   // Il gradiente di luminosità dipende da tonalità/saturazione correnti: nessuna libreria di
   // gradienti disponibile, quindi si approssima con tanti segmenti sottili (effetto sfumato).
   const brightnessSegments = useMemo(() => {
-    const segmentWidth = trackWidth / BRIGHTNESS_SEGMENTS;
+    const segmentHeight = trackHeight / BRIGHTNESS_SEGMENTS;
     return Array.from({ length: BRIGHTNESS_SEGMENTS }, (_, i) => {
-      const v = i / (BRIGHTNESS_SEGMENTS - 1);
-      return { color: hsvToHex({ h: hsv.h, s: hsv.s, v }), left: i * segmentWidth, width: segmentWidth + 1 };
+      const v = 1 - i / (BRIGHTNESS_SEGMENTS - 1);
+      return { color: hsvToHex({ h: hsv.h, s: hsv.s, v }), top: i * segmentHeight, height: segmentHeight + 1 };
     });
-  }, [hsv.h, hsv.s, trackWidth]);
+  }, [hsv.h, hsv.s, trackHeight]);
 
   const currentHex = hsvToHex(hsv);
 
   return (
-    <View>
+    <View style={styles.row}>
       <View ref={wheelDrag.containerRef} style={{ width: size, height: size }} {...wheelDrag.panHandlers}>
         <Image source={WHEEL_IMAGE} style={{ width: size, height: size }} resizeMode="contain" />
         <View
@@ -87,7 +89,7 @@ export function ColorWheelPicker({ initialValue, onChange, onChangeComplete, siz
 
       <View
         ref={brightnessDrag.containerRef}
-        style={[styles.brightnessTrack, { width: trackWidth }]}
+        style={[styles.brightnessTrack, { height: trackHeight }]}
         {...brightnessDrag.panHandlers}
       >
         {brightnessSegments.map((segment, i) => (
@@ -96,16 +98,16 @@ export function ColorWheelPicker({ initialValue, onChange, onChangeComplete, siz
             pointerEvents="none"
             style={{
               position: 'absolute',
-              left: segment.left,
-              width: segment.width,
-              height: '100%',
+              top: segment.top,
+              height: segment.height,
+              width: '100%',
               backgroundColor: segment.color,
             }}
           />
         ))}
         <View
           pointerEvents="none"
-          style={[styles.brightnessHandle, { left: hsv.v * trackWidth - 9, backgroundColor: currentHex }]}
+          style={[styles.brightnessHandle, { top: (1 - hsv.v) * trackHeight - 9, backgroundColor: currentHex }]}
         />
       </View>
     </View>
@@ -113,6 +115,10 @@ export function ColorWheelPicker({ initialValue, onChange, onChangeComplete, siz
 }
 
 const styles = StyleSheet.create({
+  row: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
   wheelIndicator: {
     position: 'absolute',
     width: 20,
@@ -127,16 +133,16 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   brightnessTrack: {
-    height: 24,
+    width: 24,
     borderRadius: 12,
-    marginTop: 16,
+    marginLeft: 16,
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: colors.border,
   },
   brightnessHandle: {
     position: 'absolute',
-    top: 2,
+    left: 2,
     width: 20,
     height: 20,
     borderRadius: 10,
