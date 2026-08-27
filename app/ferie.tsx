@@ -6,7 +6,7 @@ import { Button } from '@/src/components/shared/Button';
 import { TextField } from '@/src/components/shared/TextField';
 import { colors } from '@/src/components/shared/colors';
 import { MonthlyLeaveCalendar } from '@/src/components/calendar/MonthlyLeaveCalendar';
-import { DayAbsenceModal, DayAbsenceModalProps } from '@/src/components/calendar/DayAbsenceModal';
+import { DayAbsenceModal, DayAbsenceModalProps, DaySelection } from '@/src/components/calendar/DayAbsenceModal';
 import { useEmployees } from '@/src/hooks/useEmployees';
 import { useAllTimeOff } from '@/src/hooks/useAllTimeOff';
 import { useAllCategoryRequests } from '@/src/hooks/useAllCategoryRequests';
@@ -41,6 +41,9 @@ export default function LeaveScreen() {
   const [savingSettings, setSavingSettings] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [savingDay, setSavingDay] = useState(false);
+  const [multiSelectMode, setMultiSelectMode] = useState(false);
+  const [selectedDates, setSelectedDates] = useState<Set<string>>(new Set());
+  const [multiModalOpen, setMultiModalOpen] = useState(false);
 
   const markedDates = useMemo(
     () =>
@@ -139,9 +142,50 @@ export default function LeaveScreen() {
     }
   };
 
+  const toggleMultiSelectMode = () => {
+    setMultiSelectMode((prev) => !prev);
+    setSelectedDates(new Set());
+  };
+
   const handleDayPress = (date: string) => {
     if (!effectiveEmployeeId) return;
+    if (multiSelectMode) {
+      setSelectedDates((prev) => {
+        const next = new Set(prev);
+        if (next.has(date)) next.delete(date);
+        else next.add(date);
+        return next;
+      });
+      return;
+    }
     setSelectedDate(date);
+  };
+
+  // Permesso/ferie e fascia richiesta sono alternativi: applicare l'una cancella sempre l'altra,
+  // così non restano mai combinate per errore per lo stesso giorno. Condivisa tra il salvataggio
+  // di un solo giorno e l'applicazione a più giorni selezionati.
+  const applySelectionToDate = async (employeeId: string, date: string, selection: DaySelection): Promise<void> => {
+    if (selection.mode === 'none') {
+      await Promise.all([
+        timeOffRepository.removeTimeOff(employeeId, date),
+        categoryRequestRepository.removeCategoryRequest(employeeId, date),
+      ]);
+    } else if (selection.mode === 'full') {
+      await Promise.all([
+        timeOffRepository.addTimeOff(employeeId, date),
+        categoryRequestRepository.removeCategoryRequest(employeeId, date),
+      ]);
+    } else if (selection.mode === 'partial') {
+      await Promise.all([
+        timeOffRepository.setPermit(employeeId, date, selection.startTime, selection.endTime),
+        categoryRequestRepository.removeCategoryRequest(employeeId, date),
+      ]);
+    } else {
+      await Promise.all([
+        timeOffRepository.removeTimeOff(employeeId, date),
+        categoryRequestRepository.setCategoryRequest(employeeId, date, selection.categoryId),
+      ]);
+    }
   };
 
   const handleSaveDay: DayAbsenceModalProps['onSave'] = async (selection) => {
@@ -162,32 +206,46 @@ export default function LeaveScreen() {
 
     setSavingDay(true);
     try {
-      // Permesso/ferie e fascia richiesta sono ora alternativi: salvando l'una si cancella
-      // sempre l'altra, così non restano mai combinati per errore per lo stesso giorno.
-      if (selection.mode === 'none') {
-        await Promise.all([
-          timeOffRepository.removeTimeOff(effectiveEmployeeId, selectedDate),
-          categoryRequestRepository.removeCategoryRequest(effectiveEmployeeId, selectedDate),
-        ]);
-      } else if (selection.mode === 'full') {
-        await Promise.all([
-          timeOffRepository.addTimeOff(effectiveEmployeeId, selectedDate),
-          categoryRequestRepository.removeCategoryRequest(effectiveEmployeeId, selectedDate),
-        ]);
-      } else if (selection.mode === 'partial') {
-        await Promise.all([
-          timeOffRepository.setPermit(effectiveEmployeeId, selectedDate, selection.startTime, selection.endTime),
-          categoryRequestRepository.removeCategoryRequest(effectiveEmployeeId, selectedDate),
-        ]);
-      } else {
-        await Promise.all([
-          timeOffRepository.removeTimeOff(effectiveEmployeeId, selectedDate),
-          categoryRequestRepository.setCategoryRequest(effectiveEmployeeId, selectedDate, selection.categoryId),
-        ]);
-      }
-
+      await applySelectionToDate(effectiveEmployeeId, selectedDate, selection);
       await Promise.all([reloadAllTimeOff(), reloadAllCategoryRequests()]);
       setSelectedDate(null);
+    } finally {
+      setSavingDay(false);
+    }
+  };
+
+  const handleSaveMultipleDays: DayAbsenceModalProps['onSave'] = async (selection) => {
+    if (!effectiveEmployeeId || selectedDates.size === 0) return;
+
+    const isAbsenceChoice = selection.mode === 'full' || selection.mode === 'partial';
+    const datesToApply: string[] = [];
+    const skippedDates: string[] = [];
+    for (const date of selectedDates) {
+      const wasAbsent = markedDates.has(date) || partialDates.has(date);
+      const otherCount = otherCounts[date] ?? 0;
+      if (!wasAbsent && isAbsenceChoice && settings.maxDailyTimeOff !== undefined && otherCount >= settings.maxDailyTimeOff) {
+        skippedDates.push(date);
+      } else {
+        datesToApply.push(date);
+      }
+    }
+
+    setSavingDay(true);
+    try {
+      await Promise.all(datesToApply.map((date) => applySelectionToDate(effectiveEmployeeId, date, selection)));
+      await Promise.all([reloadAllTimeOff(), reloadAllCategoryRequests()]);
+      setMultiModalOpen(false);
+      setSelectedDates(new Set());
+      setMultiSelectMode(false);
+      if (skippedDates.length > 0) {
+        showAlert(
+          strings.leave.limitReachedTitle,
+          `Limite massimo raggiunto per ${skippedDates.length} giorno/i, non modificati: ${skippedDates
+            .sort()
+            .map(formatDateLong)
+            .join(', ')}.`
+        );
+      }
     } finally {
       setSavingDay(false);
     }
@@ -265,8 +323,21 @@ export default function LeaveScreen() {
           </View>
 
           <Text style={styles.hint}>
-            Tocca un giorno per impostare ferie, permesso o una fascia oraria richiesta.
+            {multiSelectMode
+              ? 'Tocca i giorni da modificare insieme, poi applica una scelta a tutti.'
+              : 'Tocca un giorno per impostare ferie, permesso o una fascia oraria richiesta.'}
           </Text>
+
+          <View style={styles.multiSelectRow}>
+            <Button
+              label={multiSelectMode ? 'Annulla selezione multipla' : 'Seleziona più giorni'}
+              variant="secondary"
+              onPress={toggleMultiSelectMode}
+            />
+            {multiSelectMode && selectedDates.size > 0 && (
+              <Button label={`Applica a ${selectedDates.size} giorni`} onPress={() => setMultiModalOpen(true)} />
+            )}
+          </View>
 
           <MonthlyLeaveCalendar
             year={year}
@@ -276,6 +347,7 @@ export default function LeaveScreen() {
             categoryRequestDates={categoryRequestDates}
             otherCounts={otherCounts}
             maxPerDay={settings.maxDailyTimeOff}
+            selectedDates={selectedDates}
             onDayPress={handleDayPress}
           />
 
@@ -306,16 +378,20 @@ export default function LeaveScreen() {
       )}
 
       <DayAbsenceModal
-        visible={selectedDate !== null}
+        visible={selectedDate !== null || multiModalOpen}
         date={selectedDate}
+        dates={multiModalOpen ? [...selectedDates] : undefined}
         currentTimeOff={allTimeOff.find((t) => t.employeeId === effectiveEmployeeId && t.date === selectedDate)}
         currentCategoryRequest={allCategoryRequests.find(
           (r) => r.employeeId === effectiveEmployeeId && r.date === selectedDate
         )}
         categories={categories}
         saving={savingDay}
-        onClose={() => setSelectedDate(null)}
-        onSave={handleSaveDay}
+        onClose={() => {
+          setSelectedDate(null);
+          setMultiModalOpen(false);
+        }}
+        onSave={multiModalOpen ? handleSaveMultipleDays : handleSaveDay}
       />
     </ScreenContainer>
   );
@@ -352,6 +428,12 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700',
     color: colors.text,
+  },
+  multiSelectRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 12,
   },
   hint: {
     fontSize: 12,

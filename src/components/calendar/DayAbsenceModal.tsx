@@ -19,6 +19,13 @@ export type DaySelection =
 export interface DayAbsenceModalProps {
   visible: boolean;
   date: string | null;
+  /**
+   * Se presente (con più di un elemento), la modale lavora in modalità "giorni multipli": il
+   * titolo mostra il conteggio invece della data, e non si precompila da currentTimeOff/
+   * currentCategoryRequest (giorni diversi possono avere stati diversi, non c'è un unico "stato
+   * attuale" da mostrare). Chi chiama applica poi la stessa scelta a tutte le date.
+   */
+  dates?: string[];
   currentTimeOff?: TimeOff;
   currentCategoryRequest?: CategoryRequest;
   categories: ShiftCategory[];
@@ -30,6 +37,7 @@ export interface DayAbsenceModalProps {
 export function DayAbsenceModal({
   visible,
   date,
+  dates,
   currentTimeOff,
   currentCategoryRequest,
   categories,
@@ -37,6 +45,7 @@ export function DayAbsenceModal({
   onClose,
   onSave,
 }: DayAbsenceModalProps) {
+  const isMultiDay = (dates?.length ?? 0) > 0;
   const [mode, setMode] = useState<Mode>('none');
   const [startTime, setStartTime] = useState('09:00');
   const [endTime, setEndTime] = useState('13:00');
@@ -53,6 +62,15 @@ export function DayAbsenceModal({
 
   useEffect(() => {
     if (!visible) return;
+    if (isMultiDay) {
+      // Niente precompilazione: si parte sempre da "Nessuna" e si sceglie cosa applicare a
+      // tutti i giorni selezionati.
+      setMode('none');
+      setCategoryId(null);
+      setStartTime('09:00');
+      setEndTime('13:00');
+      return;
+    }
     if (currentCategoryRequest) {
       setMode('category');
       setCategoryId(currentCategoryRequest.categoryId);
@@ -70,7 +88,7 @@ export function DayAbsenceModal({
       setStartTime('09:00');
       setEndTime('13:00');
     }
-  }, [visible, currentTimeOff, currentCategoryRequest]);
+  }, [visible, currentTimeOff, currentCategoryRequest, isMultiDay]);
 
   const handleSave = () => {
     if (mode === 'partial') {
@@ -91,13 +109,15 @@ export function DayAbsenceModal({
     onSave({ mode });
   };
 
-  if (!date) return null;
+  if (!date && !isMultiDay) return null;
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <View style={styles.backdrop}>
         <View style={styles.sheet}>
-          <Text style={styles.title}>{formatDateLong(date)}</Text>
+          <Text style={styles.title}>
+            {isMultiDay ? `${dates!.length} giorni selezionati` : formatDateLong(date!)}
+          </Text>
 
           <Text style={styles.sectionLabel}>Cosa vuoi impostare per questo giorno?</Text>
           <Text style={styles.hint}>

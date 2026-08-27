@@ -17,6 +17,8 @@ interface MonthlyLeaveCalendarProps {
   otherCounts?: Record<string, number>;
   /** Limite massimo di dipendenti in ferie nello stesso giorno, se impostato. */
   maxPerDay?: number;
+  /** Giorni evidenziati perché scelti in modalità "selezione multipla" (non ancora salvati). */
+  selectedDates?: Set<string>;
   onDayPress: (date: string) => void;
 }
 
@@ -38,6 +40,7 @@ export function MonthlyLeaveCalendar({
   categoryRequestDates = new Set(),
   otherCounts = {},
   maxPerDay,
+  selectedDates = new Set(),
   onDayPress,
 }: MonthlyLeaveCalendarProps) {
   const totalDays = daysInMonth(year, month);
@@ -75,6 +78,7 @@ export function MonthlyLeaveCalendar({
             const otherCount = otherCounts[dateStr] ?? 0;
             const totalCount = otherCount + (isAbsent ? 1 : 0);
             const isFull = maxPerDay !== undefined && totalCount >= maxPerDay;
+            const isSelected = selectedDates.has(dateStr);
             return (
               <Pressable
                 key={dayIndex}
@@ -85,6 +89,7 @@ export function MonthlyLeaveCalendar({
                   isFull && !isAbsent && styles.dayCellFull,
                   isPartial && styles.dayCellPartial,
                   isFullDay && { backgroundColor: colors.primary, borderColor: colors.primary },
+                  isSelected && { borderColor: colors.accent, borderWidth: 2 },
                 ]}
               >
                 <Text style={[styles.dayText, isFullDay && styles.dayTextMarked]}>{day}</Text>
