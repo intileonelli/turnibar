@@ -1,7 +1,7 @@
 import { Platform } from 'react-native';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
-import { Employee, ShiftAssignment, ShiftTemplate, WEEKDAYS, WEEKDAY_LABELS } from '@/src/models';
+import { Employee, ShiftAssignment, ShiftDayOverride, ShiftTemplate, WEEKDAYS, WEEKDAY_LABELS } from '@/src/models';
 import { dateForWeekday, timeToMinutes } from '@/src/engine';
 import { formatDateLong } from '@/src/utils/date';
 import { getContrastTextColor } from '@/src/utils/color';
@@ -13,6 +13,8 @@ interface ExportScheduleParams {
   shiftTemplates: ShiftTemplate[];
   assignments: ShiftAssignment[];
   employees: Employee[];
+  /** Eccezioni di orario/turno nascosto per questa settimana, stesse usate nella visualizzazione a schermo. */
+  overrides?: ShiftDayOverride[];
 }
 
 function escapeHtml(value: string): string {
@@ -24,8 +26,16 @@ function escapeHtml(value: string): string {
 }
 
 /** Contenuto (stile incluso) della pagina turni, riusato sia per l'anteprima sia per il PDF. */
-function buildScheduleHtml({ companyName, weekStartDate, shiftTemplates, assignments, employees }: ExportScheduleParams): string {
+function buildScheduleHtml({
+  companyName,
+  weekStartDate,
+  shiftTemplates,
+  assignments,
+  employees,
+  overrides,
+}: ExportScheduleParams): string {
   const employeeById = new Map(employees.map((e) => [e.id, e]));
+  const overridesByKey = new Map((overrides ?? []).map((o) => [`${o.shiftTemplateId}-${o.date}`, o]));
 
   const dayColumns = WEEKDAYS.map((weekday) => {
     const date = dateForWeekday(weekStartDate, weekday);
@@ -35,7 +45,12 @@ function buildScheduleHtml({ companyName, weekStartDate, shiftTemplates, assignm
 
     const shiftsHtml = templatesForDay
       .map((template) => {
+        const override = overridesByKey.get(`${template.id}-${date}`);
+        if (override?.hidden) return '';
+
         const cellAssignments = assignments.filter((a) => a.shiftTemplateId === template.id && a.date === date);
+        const displayStart = override?.startTime ?? template.startTime;
+        const displayEnd = override?.endTime ?? template.endTime;
 
         const requirementsHtml = template.requirements
           .map((req) => {
@@ -71,7 +86,7 @@ function buildScheduleHtml({ companyName, weekStartDate, shiftTemplates, assignm
 
         return `
           <div class="shift">
-            <div class="shift-time">${escapeHtml(template.startTime)} - ${escapeHtml(template.endTime)}</div>
+            <div class="shift-time">${escapeHtml(displayStart)} - ${escapeHtml(displayEnd)}</div>
             <div class="shift-name">${escapeHtml(template.name)}</div>
             ${requirementsHtml}
           </div>`;

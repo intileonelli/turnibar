@@ -166,6 +166,7 @@ export default function CalendarScreen() {
       shiftTemplates,
       assignments,
       employees,
+      overrides,
     });
   };
 
