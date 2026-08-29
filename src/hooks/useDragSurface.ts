@@ -43,6 +43,13 @@ export function useDragSurface({ onMove, onRelease }: UseDragSurfaceOptions) {
     const node = containerRef.current as unknown as HTMLElement | null;
     if (!node) return;
 
+    // Senza questo, su schermo tattile il browser può interpretare il tocco come uno scroll
+    // della pagina (siamo dentro uno ScrollView) e non consegnare affatto i pointermove al
+    // nostro codice: va impostato PRIMA che il tocco inizi, non dentro l'handler di pointerdown
+    // (troppo tardi per quel tocco, il browser ha già deciso).
+    const previousTouchAction = node.style.touchAction;
+    node.style.touchAction = 'none';
+
     const reportPosition = (clientX: number, clientY: number) => {
       const rect = node.getBoundingClientRect();
       const scale = typographyState.scale || 1;
@@ -73,6 +80,7 @@ export function useDragSurface({ onMove, onRelease }: UseDragSurfaceOptions) {
       window.removeEventListener('pointermove', handlePointerMove);
       window.removeEventListener('pointerup', stopDragging);
       window.removeEventListener('pointercancel', stopDragging);
+      node.style.touchAction = previousTouchAction;
     };
   }, []);
 
