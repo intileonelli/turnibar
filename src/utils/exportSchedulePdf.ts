@@ -2,7 +2,7 @@ import { Platform } from 'react-native';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 import { Employee, ShiftAssignment, ShiftDayOverride, ShiftTemplate, WEEKDAYS, WEEKDAY_LABELS } from '@/src/models';
-import { dateForWeekday, timeToMinutes } from '@/src/engine';
+import { dateForWeekday } from '@/src/engine';
 import { formatDateLong } from '@/src/utils/date';
 import { getContrastTextColor } from '@/src/utils/color';
 import { showAlert } from '@/src/utils/alert';
@@ -41,7 +41,7 @@ function buildScheduleHtml({
     const date = dateForWeekday(weekStartDate, weekday);
     const templatesForDay = shiftTemplates
       .filter((t) => t.weekday === weekday)
-      .sort((a, b) => timeToMinutes(a.startTime) - timeToMinutes(b.startTime));
+      .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
 
     const shiftsHtml = templatesForDay
       .map((template) => {

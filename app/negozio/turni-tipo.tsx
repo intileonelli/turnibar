@@ -10,7 +10,6 @@ import { useShiftTemplates } from '@/src/hooks/useShiftTemplates';
 import { useRoles } from '@/src/hooks/useRoles';
 import { useShiftCategories } from '@/src/hooks/useShiftCategories';
 import { shiftTemplateRepository } from '@/src/db/repositories';
-import { timeToMinutes } from '@/src/engine';
 import { confirmAction, showAlert } from '@/src/utils/alert';
 import { normalizeTime } from '@/src/utils/date';
 import { RoleRequirement, ShiftTemplate, WEEKDAY_LABELS, Weekday, WEEKDAYS } from '@/src/models';
@@ -185,6 +184,22 @@ export default function ShiftTemplatesScreen() {
     );
   };
 
+  /** Sposta un turno su/giù nell'ordine di visualizzazione del suo giorno (non cambia l'orario). */
+  const moveTemplate = async (id: string, direction: -1 | 1) => {
+    const template = shiftTemplates.find((t) => t.id === id);
+    if (!template) return;
+    const sorted = shiftTemplates
+      .filter((t) => t.weekday === template.weekday)
+      .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+    const index = sorted.findIndex((t) => t.id === id);
+    const targetIndex = index + direction;
+    if (index === -1 || targetIndex < 0 || targetIndex >= sorted.length) return;
+    const reordered = [...sorted];
+    [reordered[index], reordered[targetIndex]] = [reordered[targetIndex], reordered[index]];
+    await shiftTemplateRepository.reorderShiftTemplates(reordered.map((t) => t.id));
+    await reload();
+  };
+
   const startDuplicate = (template: ShiftTemplate) => {
     setDuplicatingId(template.id);
     setDuplicateTargets(new Set());
@@ -235,7 +250,7 @@ export default function ShiftTemplatesScreen() {
       {WEEKDAYS.map((day) => {
         const templatesForDay = shiftTemplates
           .filter((t) => t.weekday === day)
-          .sort((a, b) => timeToMinutes(a.startTime) - timeToMinutes(b.startTime));
+          .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
         return (
           <View key={day} style={styles.daySection}>
             <View style={styles.dayTitleRow}>
@@ -249,9 +264,33 @@ export default function ShiftTemplatesScreen() {
             {templatesForDay.length === 0 && (
               <Text style={styles.muted}>{strings.shop.noShiftTemplates}</Text>
             )}
-            {templatesForDay.map((template) => (
+            {templatesForDay.map((template, index) => (
               <Card key={template.id}>
                 <View style={styles.templateRow}>
+                  <View style={styles.orderButtons}>
+                    <Pressable
+                      style={[
+                        styles.orderButton,
+                        { backgroundColor: colors.primaryMuted },
+                        index === 0 && styles.orderButtonDisabled,
+                      ]}
+                      disabled={index === 0}
+                      onPress={() => moveTemplate(template.id, -1)}
+                    >
+                      <Text style={[styles.orderButtonText, { color: colors.primary }]}>↑</Text>
+                    </Pressable>
+                    <Pressable
+                      style={[
+                        styles.orderButton,
+                        { backgroundColor: colors.primaryMuted },
+                        index === templatesForDay.length - 1 && styles.orderButtonDisabled,
+                      ]}
+                      disabled={index === templatesForDay.length - 1}
+                      onPress={() => moveTemplate(template.id, 1)}
+                    >
+                      <Text style={[styles.orderButtonText, { color: colors.primary }]}>↓</Text>
+                    </Pressable>
+                  </View>
                   <View style={styles.templateInfo}>
                     <Text style={styles.templateName}>
                       {template.name} · {template.startTime}-{template.endTime}
@@ -452,8 +491,25 @@ const styles = StyleSheet.create({
   },
   templateRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+  },
+  orderButtons: {
+    marginRight: 10,
+    gap: 6,
+  },
+  orderButton: {
+    width: 28,
+    height: 28,
+    borderRadius: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  orderButtonDisabled: {
+    opacity: 0.3,
+  },
+  orderButtonText: {
+    fontSize: 14,
+    fontWeight: '700',
   },
   templateInfo: {
     flex: 1,

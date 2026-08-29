@@ -8,7 +8,6 @@ import { Button } from '@/src/components/shared/Button';
 import { PreferredCategoriesPicker } from '@/src/components/employee/PreferredCategoriesPicker';
 import { colors } from '@/src/components/shared/colors';
 import { showAlert } from '@/src/utils/alert';
-import { timeToMinutes } from '@/src/engine';
 import { useRoles } from '@/src/hooks/useRoles';
 import { useShiftTemplates } from '@/src/hooks/useShiftTemplates';
 import { useShiftCategories } from '@/src/hooks/useShiftCategories';
@@ -280,7 +279,7 @@ export default function NewEmployeeScreen() {
         WEEKDAYS.map((day) => {
           const templatesForDay = shiftTemplates
             .filter((t) => t.weekday === day)
-            .sort((a, b) => timeToMinutes(a.startTime) - timeToMinutes(b.startTime));
+            .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
           if (templatesForDay.length === 0) return null;
           return (
             <View key={day} style={styles.pinnedDaySection}>

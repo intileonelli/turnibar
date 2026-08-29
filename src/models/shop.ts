@@ -33,6 +33,13 @@ export interface ShiftTemplate {
   requirements: RoleRequirement[];
   /** Fascia oraria (id di una ShiftCategory dell'azienda) a cui appartiene questo turno. */
   categoryId: string;
+  /**
+   * Ordine di visualizzazione tra i turni dello stesso giorno della settimana (non l'orario):
+   * così la sequenza resta la stessa ogni giorno anche se gli orari esatti variano leggermente.
+   * Non impostato = usa l'ordine per orario come prima (solo per compatibilità/test: la riga del
+   * database ha sempre un valore).
+   */
+  sortOrder?: number;
 }
 
 /** Impostazioni generali del negozio. */

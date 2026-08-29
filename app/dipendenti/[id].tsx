@@ -16,7 +16,6 @@ import { useShiftCategories } from '@/src/hooks/useShiftCategories';
 import { employeeRepository, unavailabilityRepository } from '@/src/db/repositories';
 import { confirmAction, showAlert } from '@/src/utils/alert';
 import { normalizeTime } from '@/src/utils/date';
-import { timeToMinutes } from '@/src/engine';
 import {
   Employee,
   EMPLOYEE_PRIORITY_LABELS,
@@ -384,7 +383,7 @@ export default function EditEmployeeScreen() {
         WEEKDAYS.map((day) => {
           const templatesForDay = shiftTemplates
             .filter((t) => t.weekday === day)
-            .sort((a, b) => timeToMinutes(a.startTime) - timeToMinutes(b.startTime));
+            .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
           if (templatesForDay.length === 0) return null;
           return (
             <View key={day} style={styles.pinnedDaySection}>

@@ -8,6 +8,7 @@ interface ShiftTemplateRow {
   start_time: string;
   end_time: string;
   category_id: string;
+  sort_order: number;
 }
 
 interface RequirementRow {
@@ -30,7 +31,7 @@ export async function listShiftTemplates(): Promise<ShiftTemplate[]> {
     .from('shift_templates')
     .select('*')
     .order('weekday')
-    .order('start_time');
+    .order('sort_order');
   if (templateError) throw templateError;
 
   const { data: requirementRows, error: reqError } = await supabase
@@ -52,6 +53,7 @@ export async function listShiftTemplates(): Promise<ShiftTemplate[]> {
     startTime: row.start_time,
     endTime: row.end_time,
     categoryId: row.category_id,
+    sortOrder: row.sort_order,
     requirements: requirementsByTemplate.get(row.id) ?? [],
   }));
 }
@@ -61,7 +63,20 @@ export async function listShiftTemplatesForWeekday(weekday: Weekday): Promise<Sh
   return all.filter((t) => t.weekday === weekday);
 }
 
-export async function createShiftTemplate(input: Omit<ShiftTemplate, 'id'>): Promise<ShiftTemplate> {
+/** Nuovo turno: va sempre in fondo alla sequenza di quel giorno, così l'ordine degli altri non cambia. */
+async function nextSortOrder(weekday: Weekday): Promise<number> {
+  const { data, error } = await supabase
+    .from('shift_templates')
+    .select('sort_order')
+    .eq('weekday', weekday)
+    .order('sort_order', { ascending: false })
+    .limit(1);
+  if (error) throw error;
+  return (data?.[0]?.sort_order ?? -1) + 1;
+}
+
+export async function createShiftTemplate(input: Omit<ShiftTemplate, 'id' | 'sortOrder'>): Promise<ShiftTemplate> {
+  const sortOrder = await nextSortOrder(input.weekday);
   const { data: template, error } = await supabase
     .from('shift_templates')
     .insert({
@@ -70,6 +85,7 @@ export async function createShiftTemplate(input: Omit<ShiftTemplate, 'id'>): Pro
       start_time: input.startTime,
       end_time: input.endTime,
       category_id: input.categoryId,
+      sort_order: sortOrder,
     })
     .select()
     .single();
@@ -77,9 +93,10 @@ export async function createShiftTemplate(input: Omit<ShiftTemplate, 'id'>): Pro
 
   await insertRequirements(template.id, input.requirements);
 
-  return { id: template.id, ...input };
+  return { id: template.id, sortOrder, ...input };
 }
 
+/** L'ordine si cambia solo tramite reorderShiftTemplates: qui si aggiorna tutto il resto senza toccarlo. */
 export async function updateShiftTemplate(template: ShiftTemplate): Promise<void> {
   const { error } = await supabase
     .from('shift_templates')
@@ -100,6 +117,15 @@ export async function updateShiftTemplate(template: ShiftTemplate): Promise<void
   if (deleteError) throw deleteError;
 
   await insertRequirements(template.id, template.requirements);
+}
+
+/** Riassegna l'ordine di visualizzazione dei turni di un giorno secondo la sequenza data. */
+export async function reorderShiftTemplates(orderedIds: string[]): Promise<void> {
+  const results = await Promise.all(
+    orderedIds.map((id, index) => supabase.from('shift_templates').update({ sort_order: index }).eq('id', id))
+  );
+  const failed = results.find((r) => r.error);
+  if (failed?.error) throw failed.error;
 }
 
 export async function deleteShiftTemplate(id: string): Promise<void> {

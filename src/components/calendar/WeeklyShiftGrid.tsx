@@ -1,6 +1,6 @@
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Employee, ShiftAssignment, ShiftDayOverride, ShiftTemplate, WEEKDAY_LABELS_SHORT, WEEKDAYS } from '@/src/models';
-import { dateForWeekday, timeToMinutes } from '@/src/engine';
+import { dateForWeekday } from '@/src/engine';
 import { formatDateLong } from '@/src/utils/date';
 import { getContrastTextColor } from '@/src/utils/color';
 import { colors } from '@/src/components/shared/colors';
@@ -46,10 +46,7 @@ export function WeeklyShiftGrid({
           const date = dateForWeekday(weekStartDate, weekday);
           const templatesForDay = shiftTemplates
             .filter((t) => t.weekday === weekday)
-            .sort((a, b) => {
-              const diff = timeToMinutes(a.startTime) - timeToMinutes(b.startTime);
-              return diff !== 0 ? diff : timeToMinutes(a.endTime) - timeToMinutes(b.endTime);
-            });
+            .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
 
           return (
             <View key={weekday} style={styles.column}>
