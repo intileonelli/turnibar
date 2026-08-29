@@ -26,10 +26,10 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 14,
     marginBottom: 10,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.08,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.16,
     shadowRadius: 16,
-    elevation: 3,
+    elevation: 4,
   },
   pressed: {
     opacity: 0.7,

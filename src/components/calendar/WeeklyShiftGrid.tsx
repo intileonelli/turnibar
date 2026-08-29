@@ -203,10 +203,10 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     padding: 8,
     marginBottom: 8,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.1,
-    shadowRadius: 14,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.2,
+    shadowRadius: 16,
+    elevation: 4,
   },
   // Colore fisso (non colors.text/textMuted): la card sotto resta sempre bianca a prescindere
   // dal tema, quindi anche il testo qui sopra deve restare sempre leggibile su bianco, anche se
