@@ -71,7 +71,7 @@ export function WeeklyShiftGrid({
                 const hasTimeOverride = !!(override?.startTime || override?.endTime);
 
                 return (
-                  <View key={template.id} style={styles.card}>
+                  <View key={template.id} style={[styles.card, { shadowColor: colors.primary }]}>
                     <Pressable
                       disabled={!canEditDay}
                       onPress={() => onEditShiftDay?.(template, date)}
@@ -123,7 +123,7 @@ export function WeeklyShiftGrid({
                                 <Pressable
                                   key={a.id}
                                   onPress={() => onAssignmentPress(a, template)}
-                                  style={[styles.employeeChip, { backgroundColor: employeeColor }]}
+                                  style={[styles.employeeChip, { backgroundColor: employeeColor, shadowColor: employeeColor }]}
                                 >
                                   <Text
                                     style={[
@@ -200,11 +200,13 @@ const styles = StyleSheet.create({
   },
   card: {
     backgroundColor: colors.surface,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: 6,
-    marginBottom: 6,
+    borderRadius: 14,
+    padding: 8,
+    marginBottom: 8,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.1,
+    shadowRadius: 14,
+    elevation: 3,
   },
   // Colore fisso (non colors.text/textMuted): la card sotto resta sempre bianca a prescindere
   // dal tema, quindi anche il testo qui sopra deve restare sempre leggibile su bianco, anche se
@@ -231,11 +233,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   employeeChip: {
-    borderRadius: 6,
-    paddingVertical: 3,
-    paddingHorizontal: 6,
+    borderRadius: 9,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
     marginRight: 4,
     marginBottom: 4,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.35,
+    shadowRadius: 6,
+    elevation: 2,
   },
   employeeChipText: {
     fontSize: 17,

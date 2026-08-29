@@ -16,6 +16,7 @@ export function Button({ label, onPress, variant = 'primary', disabled, loading 
   // possono cambiare a runtime (personalizzazione colori dell'azienda).
   const variantBackground =
     variant === 'primary' ? colors.primary : variant === 'secondary' ? colors.primaryMuted : colors.danger;
+  const shadowColor = variant === 'danger' ? colors.danger : colors.primary;
 
   return (
     <Pressable
@@ -23,7 +24,7 @@ export function Button({ label, onPress, variant = 'primary', disabled, loading 
       disabled={disabled || loading}
       style={({ pressed }) => [
         styles.base,
-        { backgroundColor: variantBackground },
+        { backgroundColor: variantBackground, shadowColor },
         (disabled || loading) && styles.disabled,
         pressed && !disabled && !loading && styles.pressed,
       ]}
@@ -41,15 +42,26 @@ const styles = StyleSheet.create({
   base: {
     paddingVertical: 12,
     paddingHorizontal: 16,
-    borderRadius: 10,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
+    shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.22,
+    shadowRadius: 10,
+    elevation: 3,
   },
+  // "Cedimento" al tocco: si appiattisce leggermente, come i cerchi della Home.
   pressed: {
-    opacity: 0.8,
+    transform: [{ scale: 0.97 }, { translateY: 1 }],
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.18,
+    shadowRadius: 4,
+    elevation: 1,
   },
   disabled: {
     opacity: 0.5,
+    shadowOpacity: 0,
+    elevation: 0,
   },
   label: {
     color: '#fff',
