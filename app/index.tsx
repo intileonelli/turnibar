@@ -4,12 +4,20 @@ import { ScreenContainer } from '@/src/components/shared/ScreenContainer';
 import { Button } from '@/src/components/shared/Button';
 import { IconTile, IconTileProps } from '@/src/components/shared/IconTile';
 import { colors } from '@/src/components/shared/colors';
-import { NAV_ICONS } from '@/src/constants/navIcons';
 import { useCompany } from '@/src/hooks/useCompany';
 import { strings } from '@/src/i18n/strings';
 import { useCurrentAuth } from '@/src/context/AuthContext';
 
 const TILES_PER_ROW = 3;
+
+/** Emoji dei riquadri della Home (scelte nell'anteprima di restyling approvata). */
+const TILE_ICONS = {
+  dipendenti: '👥',
+  negozio: '🏬',
+  calendario: '📅',
+  ferie: '🏖️',
+  impostazioni: '⚙️',
+};
 
 function chunk<T>(items: T[], size: number): T[][] {
   const rows: T[][] = [];
@@ -26,11 +34,11 @@ export default function HomeScreen() {
   const roleLabel = isFounder ? 'Titolare' : isOwner ? 'Amministratore' : 'Dipendente';
 
   const tiles: (Omit<IconTileProps, 'onPress'> & { route: string })[] = [
-    ...(isOwner ? [{ icon: NAV_ICONS.dipendenti, label: 'Dipendenti', route: '/dipendenti' }] : []),
-    ...(isOwner ? [{ icon: NAV_ICONS.negozio, label: 'Negozio', route: '/negozio' }] : []),
-    { icon: NAV_ICONS.calendario, label: 'Turni', route: '/calendario' },
-    { icon: NAV_ICONS.ferie, label: 'Ferie', route: '/ferie' },
-    { icon: NAV_ICONS.impostazioni, label: 'Impostazioni', route: '/impostazioni' },
+    ...(isOwner ? [{ icon: TILE_ICONS.dipendenti, label: 'Dipendenti', route: '/dipendenti' }] : []),
+    ...(isOwner ? [{ icon: TILE_ICONS.negozio, label: 'Negozio', route: '/negozio' }] : []),
+    { icon: TILE_ICONS.calendario, label: 'Turni', route: '/calendario' },
+    { icon: TILE_ICONS.ferie, label: 'Ferie', route: '/ferie' },
+    { icon: TILE_ICONS.impostazioni, label: 'Impostazioni', route: '/impostazioni' },
   ];
   // Righe da 3 e poi da 2 (effetto "a nido d'ape") invece di lasciare che vadano a capo da sole,
   // che con larghezze diverse dello schermo può spezzare le righe in modo imprevedibile.

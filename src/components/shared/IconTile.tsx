@@ -1,9 +1,9 @@
-import { Ionicons } from '@expo/vector-icons';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { colors, themeState } from './colors';
 
 export interface IconTileProps {
-  icon: keyof typeof Ionicons.glyphMap;
+  /** Emoji mostrata nel cerchio (non un nome di icona). */
+  icon: string;
   label: string;
   onPress: () => void;
 }
@@ -30,7 +30,7 @@ export function IconTile({ icon, label, onPress }: IconTileProps) {
               pressed && styles.iconCirclePressedTransform,
             ]}
           >
-            <Ionicons name={icon} size={28} color={colors.accent} />
+            <Text style={styles.icon}>{icon}</Text>
           </View>
           <Text style={styles.label} numberOfLines={2}>
             {label}
@@ -61,6 +61,9 @@ const styles = StyleSheet.create({
   iconCirclePressedTransform: {
     transform: [{ scale: 0.94 }, { translateY: 1 }],
     elevation: 2,
+  },
+  icon: {
+    fontSize: 28,
   },
   label: {
     fontSize: 12,
