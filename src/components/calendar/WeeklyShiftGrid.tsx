@@ -71,7 +71,16 @@ export function WeeklyShiftGrid({
                 const hasTimeOverride = !!(override?.startTime || override?.endTime);
 
                 return (
-                  <View key={template.id} style={[styles.card, { shadowColor: colors.primary }]}>
+                  <View
+                    key={template.id}
+                    style={[
+                      styles.card,
+                      // Colore + geometria dell'ombra insieme: react-native-web non calcola il
+                      // box-shadow se il colore (dinamico) è separato dalla geometria statica di
+                      // StyleSheet.create.
+                      { shadowColor: colors.primary, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.2, shadowRadius: 16 },
+                    ]}
+                  >
                     <Pressable
                       disabled={!canEditDay}
                       onPress={() => onEditShiftDay?.(template, date)}
@@ -123,7 +132,16 @@ export function WeeklyShiftGrid({
                                 <Pressable
                                   key={a.id}
                                   onPress={() => onAssignmentPress(a, template)}
-                                  style={[styles.employeeChip, { backgroundColor: employeeColor, shadowColor: employeeColor }]}
+                                  style={[
+                                    styles.employeeChip,
+                                    {
+                                      backgroundColor: employeeColor,
+                                      shadowColor: employeeColor,
+                                      shadowOffset: { width: 0, height: 3 },
+                                      shadowOpacity: 0.35,
+                                      shadowRadius: 6,
+                                    },
+                                  ]}
                                 >
                                   <Text
                                     style={[
@@ -203,9 +221,6 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     padding: 8,
     marginBottom: 8,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.2,
-    shadowRadius: 16,
     elevation: 4,
   },
   // Colore fisso (non colors.text/textMuted): la card sotto resta sempre bianca a prescindere
@@ -238,9 +253,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     marginRight: 4,
     marginBottom: 4,
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.35,
-    shadowRadius: 6,
     elevation: 2,
   },
   employeeChipText: {

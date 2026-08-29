@@ -1,3 +1,5 @@
+import { mixHex } from '@/src/utils/color';
+
 export const colors = {
   background: '#F8FAFC',
   surface: '#FFFFFF',
@@ -42,9 +44,16 @@ function lightTint(hex: string, whiteRatio = 0.88): string {
 const DEFAULT_PRIMARY = '#4F46E5';
 const DEFAULT_ACCENT = '#4F46E5';
 const DEFAULT_TEXT = '#0F172A';
+const DEFAULT_BACKGROUND = '#F8FAFC';
 
-/** Colore e opacità dello sfondo decorativo attualmente selezionati dall'azienda (mutati da applyTheme). */
-export const themeState = { backgroundColor: DEFAULT_PRIMARY, backgroundOpacity: 0 };
+/**
+ * Colore/opacità dello sfondo decorativo scelti dall'azienda, e lo stesso colore già "mescolato"
+ * sopra lo sfondo di base (chromeBackground): serve per l'intestazione e la barra di navigazione
+ * in basso, che sono fuori dalle singole schermate e quindi non possono usare l'overlay
+ * trasparente (ScreenBackground) — devono invece avere già il colore finale pronto, altrimenti
+ * con un colore testo personalizzato bianco resterebbero su uno sfondo chiaro illeggibile.
+ */
+export const themeState = { backgroundColor: DEFAULT_PRIMARY, backgroundOpacity: 0, chromeBackground: DEFAULT_BACKGROUND };
 
 /**
  * Applica i colori/sfondo scelti dall'azienda, mutando l'oggetto `colors` condiviso (importato
@@ -63,8 +72,11 @@ export function applyTheme(settings: {
   colors.primaryMuted = lightTint(primary);
   colors.accent = accent;
   colors.accentMuted = lightTint(accent);
-  themeState.backgroundColor = settings.backgroundColor ?? primary;
-  themeState.backgroundOpacity = settings.backgroundOpacity ?? 0;
+  const backgroundColor = settings.backgroundColor ?? primary;
+  const backgroundOpacity = settings.backgroundOpacity ?? 0;
+  themeState.backgroundColor = backgroundColor;
+  themeState.backgroundOpacity = backgroundOpacity;
+  themeState.chromeBackground = mixHex(DEFAULT_BACKGROUND, backgroundColor, Math.min(backgroundOpacity, 100) / 100);
 }
 
 /**

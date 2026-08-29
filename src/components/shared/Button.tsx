@@ -22,12 +22,26 @@ export function Button({ label, onPress, variant = 'primary', disabled, loading 
     <Pressable
       onPress={onPress}
       disabled={disabled || loading}
-      style={({ pressed }) => [
-        styles.base,
-        { backgroundColor: variantBackground, shadowColor },
-        (disabled || loading) && styles.disabled,
-        pressed && !disabled && !loading && styles.pressed,
-      ]}
+      style={({ pressed }) => {
+        const isDisabled = disabled || loading;
+        const isPressed = pressed && !isDisabled;
+        return [
+          styles.base,
+          // Ombra (colore + geometria) insieme: react-native-web non calcola il box-shadow se il
+          // colore arriva in un oggetto inline separato dalla geometria di StyleSheet.create.
+          {
+            backgroundColor: variantBackground,
+            shadowColor,
+            ...(isDisabled
+              ? { shadowOpacity: 0 }
+              : isPressed
+                ? { shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.18, shadowRadius: 4 }
+                : { shadowOffset: { width: 0, height: 5 }, shadowOpacity: 0.22, shadowRadius: 10 }),
+          },
+          isDisabled && styles.disabled,
+          isPressed && styles.pressedTransform,
+        ];
+      }}
     >
       {loading ? (
         <ActivityIndicator color={variant === 'secondary' ? colors.primary : '#fff'} />
@@ -45,22 +59,16 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowOffset: { width: 0, height: 5 },
-    shadowOpacity: 0.22,
-    shadowRadius: 10,
     elevation: 3,
   },
-  // "Cedimento" al tocco: si appiattisce leggermente, come i cerchi della Home.
-  pressed: {
+  // "Cedimento" al tocco: si appiattisce leggermente, come i cerchi della Home (l'ombra si
+  // appiattisce tramite lo stile inline sopra, non qui).
+  pressedTransform: {
     transform: [{ scale: 0.97 }, { translateY: 1 }],
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.18,
-    shadowRadius: 4,
     elevation: 1,
   },
   disabled: {
     opacity: 0.5,
-    shadowOpacity: 0,
     elevation: 0,
   },
   label: {

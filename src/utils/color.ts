@@ -46,6 +46,20 @@ export function hexToHsv(hex: string): Hsv {
   return { h, s, v };
 }
 
+/** Mescola due colori esadecimali: ratio 0 = tutto `base`, ratio 1 = tutto `overlay`. */
+export function mixHex(base: string, overlay: string, ratio: number): string {
+  const clamped = Math.max(0, Math.min(1, ratio));
+  const parse = (hex: string) => {
+    const n = hex.replace('#', '');
+    return [parseInt(n.substring(0, 2), 16), parseInt(n.substring(2, 4), 16), parseInt(n.substring(4, 6), 16)];
+  };
+  const [br, bg, bb] = parse(base);
+  const [or_, og, ob] = parse(overlay);
+  const mix = (b: number, o: number) => Math.round(b * (1 - clamped) + o * clamped);
+  const toHex = (n: number) => n.toString(16).padStart(2, '0');
+  return `#${toHex(mix(br, or_))}${toHex(mix(bg, og))}${toHex(mix(bb, ob))}`.toUpperCase();
+}
+
 /** Colore del testo (nero o bianco) che garantisce buon contrasto su uno sfondo esadecimale dato. */
 export function getContrastTextColor(hex: string): '#000000' | '#FFFFFF' {
   const normalized = hex.replace('#', '');

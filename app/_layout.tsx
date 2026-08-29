@@ -8,7 +8,7 @@ import { DbGate } from '@/src/components/shared/DbGate';
 import { AuthGate } from '@/src/components/shared/AuthGate';
 import { ThemeGate } from '@/src/components/shared/ThemeGate';
 import { useCurrentAuth } from '@/src/context/AuthContext';
-import { colors } from '@/src/components/shared/colors';
+import { colors, themeState } from '@/src/components/shared/colors';
 import { typographyState } from '@/src/components/shared/typography';
 import { NAV_ICONS } from '@/src/constants/navIcons';
 import { useThemeStore } from '@/src/store/themeStore';
@@ -43,12 +43,13 @@ function AppTabs() {
     <View style={[{ flex: 1 }, zoomStyle()]}>
       <Tabs
         screenOptions={{
-          // Sfondo trasparente invece del bianco fisso: con un colore testo personalizzato
-          // bianco, una casella bianca dietro renderebbe illeggibili sia il titolo in alto che
-          // le icone in basso.
-          headerStyle: { backgroundColor: 'transparent' },
+          // Stesso sfondo scelto per l'app (colore + trasparenza), non trasparente: essendo
+          // fuori dalle singole schermate, l'intestazione e la barra in basso non possono usare
+          // l'overlay di ScreenBackground, e un semplice "transparent" lascerebbe intravedere lo
+          // sfondo chiaro di base della pagina, illeggibile con un colore testo bianco.
+          headerStyle: { backgroundColor: themeState.chromeBackground },
           headerTitleStyle: { color: colors.text },
-          tabBarStyle: { backgroundColor: 'transparent' },
+          tabBarStyle: { backgroundColor: themeState.chromeBackground },
           tabBarActiveTintColor: colors.primary,
           tabBarInactiveTintColor: colors.textMuted,
         }}

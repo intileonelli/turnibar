@@ -16,10 +16,18 @@ export function IconTile({ icon, label, onPress }: IconTileProps) {
           <View
             style={[
               styles.iconCircle,
-              // Ombra calcolata ad ogni render (non in StyleSheet.create) perché colors.accent/
-              // colors.primary possono cambiare a runtime con la personalizzazione colori.
-              { backgroundColor: colors.accentMuted, shadowColor: colors.primary },
-              pressed && styles.iconCirclePressed,
+              // Ombra (colore + geometria) calcolata insieme ad ogni render: react-native-web non
+              // calcola correttamente il box-shadow se il colore è in un oggetto inline separato
+              // dalla geometria definita in StyleSheet.create (risulterebbe un'ombra invisibile,
+              // 0px 0px 0px, finché un secondo stile con la sua stessa geometria non viene unito).
+              {
+                backgroundColor: colors.accentMuted,
+                shadowColor: colors.primary,
+                ...(pressed
+                  ? { shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.3, shadowRadius: 6 }
+                  : { shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.28, shadowRadius: 14 }),
+              },
+              pressed && styles.iconCirclePressedTransform,
             ]}
           >
             <Ionicons name={icon} size={28} color={colors.accent} />
@@ -46,18 +54,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 8,
     overflow: 'hidden',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.28,
-    shadowRadius: 14,
     elevation: 6,
   },
-  // "Cedimento" al tocco: il cerchio si rimpicciolisce un po' e l'ombra si appiattisce, come se
-  // venisse premuto verso il basso.
-  iconCirclePressed: {
+  // "Cedimento" al tocco: il cerchio si rimpicciolisce un po', come se venisse premuto verso il
+  // basso (l'ombra si appiattisce tramite lo stile inline sopra, non qui).
+  iconCirclePressedTransform: {
     transform: [{ scale: 0.94 }, { translateY: 1 }],
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.3,
-    shadowRadius: 6,
     elevation: 2,
   },
   label: {
