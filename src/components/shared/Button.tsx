@@ -1,5 +1,5 @@
 import { ActivityIndicator, Pressable, StyleSheet, Text } from 'react-native';
-import { colors } from './colors';
+import { colors, themeState } from './colors';
 
 type Variant = 'primary' | 'secondary' | 'danger';
 
@@ -35,8 +35,8 @@ export function Button({ label, onPress, variant = 'primary', disabled, loading 
             ...(isDisabled
               ? { shadowOpacity: 0 }
               : isPressed
-                ? { shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.18, shadowRadius: 4 }
-                : { shadowOffset: { width: 0, height: 5 }, shadowOpacity: 0.22, shadowRadius: 10 }),
+                ? { shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.18 * themeState.shadowIntensity, shadowRadius: 4 }
+                : { shadowOffset: { width: 0, height: 5 }, shadowOpacity: 0.22 * themeState.shadowIntensity, shadowRadius: 10 }),
           },
           isDisabled && styles.disabled,
           isPressed && styles.pressedTransform,

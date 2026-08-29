@@ -46,14 +46,25 @@ const DEFAULT_ACCENT = '#4F46E5';
 const DEFAULT_TEXT = '#0F172A';
 const DEFAULT_BACKGROUND = '#F8FAFC';
 
+const DEFAULT_SHADOW_INTENSITY = 100;
+
 /**
  * Colore/opacità dello sfondo decorativo scelti dall'azienda, e lo stesso colore già "mescolato"
  * sopra lo sfondo di base (chromeBackground): serve per l'intestazione e la barra di navigazione
  * in basso, che sono fuori dalle singole schermate e quindi non possono usare l'overlay
  * trasparente (ScreenBackground) — devono invece avere già il colore finale pronto, altrimenti
  * con un colore testo personalizzato bianco resterebbero su uno sfondo chiaro illeggibile.
+ *
+ * `shadowIntensity` è un moltiplicatore (1 = intensità di default dell'app, 0 = nessuna ombra):
+ * i componenti con ombra (Card, Button, IconTile, WeeklyShiftGrid) lo leggono ad ogni render e lo
+ * applicano alla propria opacità base.
  */
-export const themeState = { backgroundColor: DEFAULT_PRIMARY, backgroundOpacity: 0, chromeBackground: DEFAULT_BACKGROUND };
+export const themeState = {
+  backgroundColor: DEFAULT_PRIMARY,
+  backgroundOpacity: 0,
+  chromeBackground: DEFAULT_BACKGROUND,
+  shadowIntensity: DEFAULT_SHADOW_INTENSITY / 100,
+};
 
 /**
  * Applica i colori/sfondo scelti dall'azienda, mutando l'oggetto `colors` condiviso (importato
@@ -65,6 +76,7 @@ export function applyTheme(settings: {
   accentColor?: string;
   backgroundColor?: string;
   backgroundOpacity?: number;
+  shadowIntensity?: number;
 }): void {
   const primary = settings.primaryColor ?? DEFAULT_PRIMARY;
   const accent = settings.accentColor ?? DEFAULT_ACCENT;
@@ -77,6 +89,7 @@ export function applyTheme(settings: {
   themeState.backgroundColor = backgroundColor;
   themeState.backgroundOpacity = backgroundOpacity;
   themeState.chromeBackground = mixHex(DEFAULT_BACKGROUND, backgroundColor, Math.min(backgroundOpacity, 100) / 100);
+  themeState.shadowIntensity = (settings.shadowIntensity ?? DEFAULT_SHADOW_INTENSITY) / 100;
 }
 
 /**

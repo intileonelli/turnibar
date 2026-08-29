@@ -56,4 +56,6 @@ export interface ShopSettings {
   backgroundColor?: string;
   /** Opacità del velo di sfondo, 0-100. Non impostato o 0 = nessuno sfondo visibile. */
   backgroundOpacity?: number;
+  /** Intensità delle ombre (Card, pulsanti, ecc.), 0-100+. Non impostato = 100 (default dell'app). */
+  shadowIntensity?: number;
 }

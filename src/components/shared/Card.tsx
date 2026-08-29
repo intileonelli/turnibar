@@ -1,6 +1,6 @@
 import { PropsWithChildren } from 'react';
 import { Pressable, StyleSheet, View, ViewStyle } from 'react-native';
-import { colors } from './colors';
+import { colors, themeState } from './colors';
 
 interface CardProps extends PropsWithChildren {
   onPress?: () => void;
@@ -11,13 +11,14 @@ export function Card({ children, onPress, style }: CardProps) {
   // Ombra invece del bordo piatto: colore + geometria insieme in un unico oggetto inline, perché
   // react-native-web non calcola il box-shadow se il colore (che cambia a runtime con la
   // personalizzazione colori) è separato dalla geometria definita in StyleSheet.create.
+  // L'opacità è moltiplicata per l'intensità scelta dal titolare (personalizzazione).
   const cardStyle = [
     styles.card,
     {
       shadowColor: colors.primary,
       backgroundColor: colors.surface,
       shadowOffset: { width: 0, height: 8 },
-      shadowOpacity: 0.16,
+      shadowOpacity: 0.16 * themeState.shadowIntensity,
       shadowRadius: 16,
     },
     style,

@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { colors } from './colors';
+import { colors, themeState } from './colors';
 
 export interface IconTileProps {
   icon: keyof typeof Ionicons.glyphMap;
@@ -24,8 +24,8 @@ export function IconTile({ icon, label, onPress }: IconTileProps) {
                 backgroundColor: colors.accentMuted,
                 shadowColor: colors.primary,
                 ...(pressed
-                  ? { shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.3, shadowRadius: 6 }
-                  : { shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.28, shadowRadius: 14 }),
+                  ? { shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.3 * themeState.shadowIntensity, shadowRadius: 6 }
+                  : { shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.28 * themeState.shadowIntensity, shadowRadius: 14 }),
               },
               pressed && styles.iconCirclePressedTransform,
             ]}

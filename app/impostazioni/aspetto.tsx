@@ -152,6 +152,19 @@ export default function AppearanceScreen() {
               onChangeComplete={(value) => commitTheme({ backgroundOpacity: Math.round(value * 100) })}
             />
           </View>
+
+          <View style={styles.section}>
+            <Text style={styles.label}>Intensità ombre</Text>
+            <Text style={styles.hint}>
+              Regola quanto sono marcate le ombre di card, pulsanti e riquadri (utile su sfondi
+              molto chiari o molto scuri).
+            </Text>
+            <Slider
+              initialValue={Math.max(0, Math.min(2, (settings.shadowIntensity ?? 100) / 100)) / 2}
+              onChange={(value) => previewTheme({ shadowIntensity: Math.round(value * 200) })}
+              onChangeComplete={(value) => commitTheme({ shadowIntensity: Math.round(value * 200) })}
+            />
+          </View>
         </>
       )}
 

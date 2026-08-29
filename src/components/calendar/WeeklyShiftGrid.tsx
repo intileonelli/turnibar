@@ -3,7 +3,7 @@ import { Employee, ShiftAssignment, ShiftDayOverride, ShiftTemplate, WEEKDAY_LAB
 import { dateForWeekday } from '@/src/engine';
 import { formatDateLong } from '@/src/utils/date';
 import { getContrastTextColor } from '@/src/utils/color';
-import { colors } from '@/src/components/shared/colors';
+import { colors, themeState } from '@/src/components/shared/colors';
 
 const COLUMN_WIDTH = 210;
 
@@ -78,7 +78,7 @@ export function WeeklyShiftGrid({
                       // Colore + geometria dell'ombra insieme: react-native-web non calcola il
                       // box-shadow se il colore (dinamico) è separato dalla geometria statica di
                       // StyleSheet.create.
-                      { shadowColor: colors.primary, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.2, shadowRadius: 16 },
+                      { shadowColor: colors.primary, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.2 * themeState.shadowIntensity, shadowRadius: 16 },
                     ]}
                   >
                     <Pressable
@@ -138,7 +138,7 @@ export function WeeklyShiftGrid({
                                       backgroundColor: employeeColor,
                                       shadowColor: employeeColor,
                                       shadowOffset: { width: 0, height: 3 },
-                                      shadowOpacity: 0.35,
+                                      shadowOpacity: 0.35 * themeState.shadowIntensity,
                                       shadowRadius: 6,
                                     },
                                   ]}
