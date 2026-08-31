@@ -27,6 +27,47 @@ function hashInt(a: number, b: number, c = 0): number {
   return Math.abs(h ^ (h >>> 16));
 }
 
+/**
+ * Vero "bevel" (bordo smussato): per ogni lato del poligono, una fascia inclinata verso il
+ * centro, più chiara o più scura a seconda di quanto quel lato guarda verso una luce immaginaria
+ * (in alto a sinistra) — come lo smusso dorato di un tasto/icona, non solo un'ombra sotto la
+ * forma. La faccia interna (il "top" piatto della forma) resta al colore base, leggermente
+ * schiarito. `bevelRatio` è quanta parte della forma diventa smusso (0-0.5).
+ */
+function bevelFacets(points: [number, number][], base: string, bevelRatio = 0.26): string {
+  const n = points.length;
+  const cx = points.reduce((s, p) => s + p[0], 0) / n;
+  const cy = points.reduce((s, p) => s + p[1], 0) / n;
+  const inner = points.map(([x, y]) => [x + (cx - x) * bevelRatio, y + (cy - y) * bevelRatio] as [number, number]);
+  const lx = -0.45;
+  const ly = -0.9;
+  const llen = Math.hypot(lx, ly);
+  let facets = '';
+  for (let i = 0; i < n; i++) {
+    const [ax, ay] = points[i];
+    const [bx, by] = points[(i + 1) % n];
+    const [iax, iay] = inner[i];
+    const [ibx, iby] = inner[(i + 1) % n];
+    const ex = bx - ax;
+    const ey = by - ay;
+    let nx = ey;
+    let ny = -ex;
+    const midx = (ax + bx) / 2 - cx;
+    const midy = (ay + by) / 2 - cy;
+    if (nx * midx + ny * midy < 0) {
+      nx = -nx;
+      ny = -ny;
+    }
+    const nlen = Math.hypot(nx, ny) || 1;
+    const dot = (nx / nlen) * (lx / llen) + (ny / nlen) * (ly / llen);
+    const shade = dot >= 0 ? mixHex(base, '#FFFFFF', Math.min(dot * 0.6, 0.6)) : mixHex(base, '#000000', Math.min(-dot * 0.55, 0.55));
+    facets += `<polygon points="${ax},${ay} ${bx},${by} ${ibx},${iby} ${iax},${iay}" fill="${shade}"/>`;
+  }
+  const innerPts = inner.map((p) => p.join(',')).join(' ');
+  facets += `<polygon points="${innerPts}" fill="${mixHex(base, '#FFFFFF', 0.14)}"/>`;
+  return facets;
+}
+
 /** Poligoni sfaccettati: tassellazione di triangoli equilateri, con una sfumatura per ciascuno,
  * nei toni chiari dei due colori scelti per il motivo. */
 function lowPolyBackground(colorA: string, colorB: string): string {
@@ -46,34 +87,47 @@ function lowPolyBackground(colorA: string, colorB: string): string {
     mixHex(mixHex(colorA, colorB, 0.5), '#FFFFFF', 0.55),
   ];
   const lineColor = mixHex(mixHex(colorA, colorB, 0.5), '#FFFFFF', 0.2);
-  let defs = '';
   let shapes = '';
-  let gid = 0;
-  const grad = (c1: string, c2: string, angle: number) => {
-    const id = `g${gid++}`;
-    defs += `<linearGradient id="${id}" gradientTransform="rotate(${angle})"><stop offset="0" stop-color="${c1}"/><stop offset="1" stop-color="${c2}"/></linearGradient>`;
-    return `url(#${id})`;
-  };
   for (let r = 0; r < rowsN; r++) {
     for (let c = 0; c < cols; c++) {
       const x = c * b;
       const y = r * h;
       const upBase = palette[hashInt(r, c, 1) % palette.length];
       const downBase = palette[hashInt(r, c, 2) % palette.length];
-      const upFill = grad(upBase, mixHex(upBase, '#FFFFFF', 0.4), 60);
-      const downFill = grad(downBase, mixHex(downBase, '#FFFFFF', 0.4), 240);
       // Triangolo "su": interamente dentro la cella. Triangolo "giù": a cavallo dei bordi
       // sinistro e destro della cella (disegnato due volte, come per gli altri motivi), così la
-      // ripetizione del motivo lo ricompone senza cuciture.
-      shapes += `<polygon points="${x + b / 2},${y} ${x},${y + h} ${x + b},${y + h}" fill="${upFill}"/>`;
-      shapes += `<polygon points="${x},${y + h} ${x - b / 2},${y} ${x + b / 2},${y}" fill="${downFill}"/>`;
-      shapes += `<polygon points="${x + b},${y + h} ${x + b / 2},${y} ${x + b * 1.5},${y}" fill="${downFill}"/>`;
+      // ripetizione del motivo lo ricompone senza cuciture. Ogni triangolo è un vero bevel (bordo
+      // smussato con facce chiare/scure a seconda del lato, come un tasto), non una sfumatura piatta.
+      shapes += bevelFacets(
+        [
+          [x + b / 2, y],
+          [x, y + h],
+          [x + b, y + h],
+        ],
+        upBase,
+      );
+      shapes += bevelFacets(
+        [
+          [x, y + h],
+          [x - b / 2, y],
+          [x + b / 2, y],
+        ],
+        downBase,
+      );
+      shapes += bevelFacets(
+        [
+          [x + b, y + h],
+          [x + b / 2, y],
+          [x + b * 1.5, y],
+        ],
+        downBase,
+      );
     }
   }
-  // Filo chiaro sopra ogni triangolo, oltre all'ombra scura sotto (già data dal filtro e dal
-  // bordo lineColor): luce sopra + ombra sotto è quello che legge davvero come rilievo.
-  const highlight = shapes.replace(/fill="[^"]*"/g, 'fill="none"');
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${tileW}" height="${tileH}" viewBox="0 0 ${tileW} ${tileH}"><defs>${defs}<filter id="ds" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="0" dy="2.5" stdDeviation="2.5" flood-color="#000000" flood-opacity="0.32"/></filter></defs><g filter="url(#ds)" stroke="${lineColor}" stroke-width="0.75" stroke-opacity="0.6">${shapes}</g><g fill="none" stroke="#FFFFFF" stroke-opacity="0.5" stroke-width="1" stroke-linejoin="round">${highlight}</g></svg>`;
+  // Il velo di sfondo va spesso usato con "Trasparenza sfondo" bassa (es. 20-30%), che schiaccia
+  // uniformemente ogni colore verso il bianco della pagina: l'ombra va quindi sovradimensionata
+  // per restare visibile anche lì.
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${tileW}" height="${tileH}" viewBox="0 0 ${tileW} ${tileH}"><defs><filter id="ds" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="0" dy="3" stdDeviation="3" flood-color="#000000" flood-opacity="0.85"/></filter></defs><g filter="url(#ds)" stroke="${lineColor}" stroke-width="0.4" stroke-opacity="0.5">${shapes}</g></svg>`;
   return `${svgUrl(svg)} 0 0/${tileW}px ${tileH}px repeat`;
 }
 
@@ -118,11 +172,12 @@ function bauhausBackground(): string {
       shapes += cellShape(cellType, c * s, r * s, s, id);
     }
   }
-  defs += `<filter id="ds" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="0" dy="2.2" stdDeviation="2.2" flood-color="#000000" flood-opacity="0.3"/></filter>`;
+  defs += `<filter id="ds" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="0" dy="2.5" stdDeviation="3" flood-color="#000000" flood-opacity="0.85"/></filter>`;
   // Filo chiaro sopra ogni forma (oltre all'ombra scura sotto): luce sopra + ombra sotto è
-  // quello che legge davvero come rilievo, non la sola ombra.
+  // quello che legge davvero come rilievo, non la sola ombra. Valori sovradimensionati (vedi
+  // lowPolyBackground) per restare visibili anche con "Trasparenza sfondo" bassa.
   const highlight = shapes.replace(/fill="[^"]*"/g, 'fill="none"');
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${tileW}" height="${tileH}" viewBox="0 0 ${tileW} ${tileH}"><defs>${defs}</defs>${bgRects}<g filter="url(#ds)">${shapes}</g><g fill="none" stroke="#FFFFFF" stroke-opacity="0.55" stroke-width="1.2" stroke-linejoin="round">${highlight}</g></svg>`;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${tileW}" height="${tileH}" viewBox="0 0 ${tileW} ${tileH}"><defs>${defs}</defs>${bgRects}<g filter="url(#ds)">${shapes}</g><g fill="none" stroke="#FFFFFF" stroke-opacity="0.95" stroke-width="2" stroke-linejoin="round">${highlight}</g></svg>`;
   return `${svgUrl(svg)} 0 0/${tileW}px ${tileH}px repeat`;
 }
 
@@ -165,9 +220,10 @@ function wavesBackground(colorA: string, colorB: string): string {
   const hill2 = hill(tileH * 0.52, 20, c2, w / 3);
   const hill3 = hill(tileH * 0.8, 18, c3, w / 1.6);
   // Filo chiaro lungo la cresta di ogni collina (oltre all'ombra): dà rilievo invece di un
-  // colore piatto con solo un'ombra sotto.
+  // colore piatto con solo un'ombra sotto. Valori sovradimensionati (vedi lowPolyBackground) per
+  // restare visibili anche con "Trasparenza sfondo" bassa.
   const highlight = `${hill1}${hill2}${hill3}`.replace(/fill="[^"]*"/g, 'fill="none"').replace(/ opacity="[^"]*"/g, '');
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${tileH}" viewBox="0 0 ${w} ${tileH}"><defs>${defs}<filter id="ds" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="0" dy="-3" stdDeviation="3.5" flood-color="#000000" flood-opacity="0.28"/></filter></defs><rect width="${w}" height="${tileH}" fill="${bg}"/><g filter="url(#ds)">${hill1}${hill2}${hill3}</g><g fill="none" stroke="#FFFFFF" stroke-opacity="0.6" stroke-width="1.5" stroke-linejoin="round">${highlight}</g></svg>`;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${tileH}" viewBox="0 0 ${w} ${tileH}"><defs>${defs}<filter id="ds" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="0" dy="-4" stdDeviation="5" flood-color="#000000" flood-opacity="0.8"/></filter></defs><rect width="${w}" height="${tileH}" fill="${bg}"/><g filter="url(#ds)">${hill1}${hill2}${hill3}</g><g fill="none" stroke="#FFFFFF" stroke-opacity="0.95" stroke-width="2.5" stroke-linejoin="round">${highlight}</g></svg>`;
   // Un solo pannello, ancorato in basso, mai ripetuto: le colline riempiono per intero lo
   // spazio disponibile (non un motivo a piastrelle come gli altri tre).
   return `${svgUrl(svg)} center bottom/100% 100% no-repeat`;
@@ -178,13 +234,60 @@ function wavesBackground(colorA: string, colorB: string): string {
 function diamondsBackground(colorA: string, colorB: string): string {
   const s = 76;
   const half = s / 2;
-  const gA1 = mixHex(colorA, '#FFFFFF', 0.45);
-  const gA2 = mixHex(colorA, '#FFFFFF', 0.68);
-  const gB1 = mixHex(colorB, '#FFFFFF', 0.42);
-  const gB2 = mixHex(colorB, '#FFFFFF', 0.66);
-  const diamondShapes = `<polygon points="${half},0 ${s},${half} ${half},${s} 0,${half}" fill="url(#dA)"/><polygon points="0,0 ${half},0 0,${half}" fill="url(#dB)"/><polygon points="${s},0 ${s},${half} ${half},0" fill="url(#dB)"/><polygon points="${s},${s} ${s},${half} ${half},${s}" fill="url(#dB)"/><polygon points="0,${s} 0,${half} ${half},${s}" fill="url(#dB)"/>`;
-  const highlight = diamondShapes.replace(/fill="[^"]*"/g, 'fill="none"');
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${s}" height="${s}" viewBox="0 0 ${s} ${s}"><defs><linearGradient id="dA" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${gA1}"/><stop offset="1" stop-color="${gA2}"/></linearGradient><linearGradient id="dB" x1="1" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${gB1}"/><stop offset="1" stop-color="${gB2}"/></linearGradient><filter id="ds" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="0" dy="1.8" stdDeviation="1.8" flood-color="#000000" flood-opacity="0.3"/></filter></defs><g filter="url(#ds)">${diamondShapes}</g><g fill="none" stroke="#FFFFFF" stroke-opacity="0.5" stroke-width="1" stroke-linejoin="round">${highlight}</g></svg>`;
+  const baseA = mixHex(colorA, '#FFFFFF', 0.35);
+  const baseB = mixHex(colorB, '#FFFFFF', 0.32);
+  // Ogni losanga/triangolo è un vero bevel (bordo smussato con facce chiare/scure a seconda del
+  // lato, come un tasto), non solo una sfumatura piatta con un'ombra sotto.
+  let diamondShapes = bevelFacets(
+    [
+      [half, 0],
+      [s, half],
+      [half, s],
+      [0, half],
+    ],
+    baseA,
+    0.32,
+  );
+  diamondShapes += bevelFacets(
+    [
+      [0, 0],
+      [half, 0],
+      [0, half],
+    ],
+    baseB,
+    0.3,
+  );
+  diamondShapes += bevelFacets(
+    [
+      [s, 0],
+      [s, half],
+      [half, 0],
+    ],
+    baseB,
+    0.3,
+  );
+  diamondShapes += bevelFacets(
+    [
+      [s, s],
+      [s, half],
+      [half, s],
+    ],
+    baseB,
+    0.3,
+  );
+  diamondShapes += bevelFacets(
+    [
+      [0, s],
+      [0, half],
+      [half, s],
+    ],
+    baseB,
+    0.3,
+  );
+  // Il velo di sfondo va spesso usato con "Trasparenza sfondo" bassa (es. 20-30%), che schiaccia
+  // uniformemente ogni colore verso il bianco della pagina: l'ombra va quindi sovradimensionata
+  // per restare visibile anche lì.
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${s}" height="${s}" viewBox="0 0 ${s} ${s}"><defs><filter id="ds" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="0" dy="2.2" stdDeviation="2.5" flood-color="#000000" flood-opacity="0.85"/></filter></defs><g filter="url(#ds)">${diamondShapes}</g></svg>`;
   return `${svgUrl(svg)} 0 0/${s}px ${s}px repeat`;
 }
 
