@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { ScreenContainer } from '@/src/components/shared/ScreenContainer';
 import { Card } from '@/src/components/shared/Card';
@@ -25,6 +25,36 @@ const FONT_COLOR_OPTIONS: { label: string; hex: string }[] = [
   { label: 'Grigio', hex: '#64748B' },
   { label: 'Bianco', hex: '#FFFFFF' },
 ];
+
+interface ColorPickerRowProps {
+  label: string;
+  value: string;
+  open: boolean;
+  onToggle: () => void;
+  onChange: (hex: string) => void;
+  onChangeComplete: (hex: string) => void;
+}
+
+/** Riga compatta con il colore attuale: la ruota (grande e sempre "occupata") si apre solo al tocco. */
+function ColorPickerRow({ label, value, open, onToggle, onChange, onChangeComplete }: ColorPickerRowProps) {
+  return (
+    <>
+      <Pressable style={styles.colorRow} onPress={onToggle}>
+        <View style={[styles.colorSwatch, { backgroundColor: value }]} />
+        <View style={styles.colorRowText}>
+          <Text style={styles.colorRowLabel}>{label}</Text>
+          <Text style={styles.colorRowHex}>{value.toUpperCase()}</Text>
+        </View>
+        <Text style={styles.colorRowChevron}>{open ? '▲' : '▼'}</Text>
+      </Pressable>
+      {open && (
+        <View style={styles.colorWheelWrap}>
+          <ColorWheelPicker initialValue={value} onChange={onChange} onChangeComplete={onChangeComplete} />
+        </View>
+      )}
+    </>
+  );
+}
 
 export default function AppearanceScreen() {
   const { profile, reloadProfile } = useCurrentAuth();
@@ -65,6 +95,10 @@ export default function AppearanceScreen() {
       showAlert('Errore', err instanceof Error ? err.message : String(err));
     }
   };
+
+  const [openPicker, setOpenPicker] = useState<'primary' | 'accent' | 'background' | null>(null);
+  const togglePicker = (picker: 'primary' | 'accent' | 'background') =>
+    setOpenPicker((current) => (current === picker ? null : picker));
 
   const currentFontScale = profile?.fontScale ?? 1;
   const fontScaleSliderValue = (currentFontScale - MIN_FONT_SCALE) / (MAX_FONT_SCALE - MIN_FONT_SCALE);
@@ -119,27 +153,33 @@ export default function AppearanceScreen() {
           </Text>
 
           <View style={styles.section}>
-            <Text style={styles.label}>Colore principale</Text>
-            <ColorWheelPicker
-              initialValue={settings.primaryColor ?? DEFAULT_COLOR}
+            <ColorPickerRow
+              label="Colore principale"
+              value={settings.primaryColor ?? DEFAULT_COLOR}
+              open={openPicker === 'primary'}
+              onToggle={() => togglePicker('primary')}
               onChange={(hex) => previewTheme({ primaryColor: hex })}
               onChangeComplete={(hex) => commitTheme({ primaryColor: hex })}
             />
           </View>
 
           <View style={styles.section}>
-            <Text style={styles.label}>Colore secondario</Text>
-            <ColorWheelPicker
-              initialValue={settings.accentColor ?? DEFAULT_COLOR}
+            <ColorPickerRow
+              label="Colore secondario"
+              value={settings.accentColor ?? DEFAULT_COLOR}
+              open={openPicker === 'accent'}
+              onToggle={() => togglePicker('accent')}
               onChange={(hex) => previewTheme({ accentColor: hex })}
               onChangeComplete={(hex) => commitTheme({ accentColor: hex })}
             />
           </View>
 
           <View style={styles.section}>
-            <Text style={styles.label}>Colore sfondo</Text>
-            <ColorWheelPicker
-              initialValue={settings.backgroundColor ?? settings.primaryColor ?? DEFAULT_COLOR}
+            <ColorPickerRow
+              label="Colore sfondo"
+              value={settings.backgroundColor ?? settings.primaryColor ?? DEFAULT_COLOR}
+              open={openPicker === 'background'}
+              onToggle={() => togglePicker('background')}
               onChange={(hex) => previewTheme({ backgroundColor: hex })}
               onChangeComplete={(hex) => commitTheme({ backgroundColor: hex })}
             />
@@ -268,6 +308,39 @@ const styles = StyleSheet.create({
   },
   spacedLabel: {
     marginTop: 20,
+  },
+  colorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  colorSwatch: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  colorRowText: {
+    flex: 1,
+  },
+  colorRowLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.textMuted,
+  },
+  colorRowHex: {
+    fontSize: 12,
+    color: colors.textMuted,
+    marginTop: 2,
+  },
+  colorRowChevron: {
+    fontSize: 12,
+    color: colors.textMuted,
+  },
+  colorWheelWrap: {
+    marginTop: 16,
+    alignItems: 'flex-start',
   },
   fontScaleRow: {
     alignItems: 'flex-start',
