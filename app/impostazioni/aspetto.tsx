@@ -62,35 +62,69 @@ export default function AppearanceScreen() {
   const { settings, loading: settingsLoading, reload: reloadSettings } = useShopSettings();
   const bumpTheme = useThemeStore((s) => s.bump);
 
-  // Fonte di verità per le modifiche in corso: si aggiorna in modo sincrono ad ogni scelta
-  // (anteprima o salvataggio), quindi non risente di eventuali ricariche dal database ancora in
-  // corso. Usare invece `settings` (stato React) per unire le modifiche creerebbe una corsa: se
-  // si sceglie un colore e poi si sposta subito lo slider della trasparenza, il secondo salvataggio
-  // partirebbe da un `settings` non ancora aggiornato con il colore appena scelto, cancellandolo.
-  const draftRef = useRef(settings);
+  // A chi si applicano le prossime modifiche: solo il titolare può scegliere "azienda" (il tema
+  // di base visto da chiunque non l'abbia personalizzato); un dipendente modifica sempre e solo
+  // la propria preferenza personale.
+  const [scopeChoice, setScopeChoice] = useState<'company' | 'personal'>('company');
+  const scope = isOwner ? scopeChoice : 'personal';
+
+  // Quello che si vede in schermata è sempre il tema effettivo (azienda + eventuale preferenza
+  // personale sopra, quest'ultima vince quando presente) — a prescindere da dove finirà la
+  // prossima modifica.
+  const effective: ShopSettings = { ...settings, ...profile?.personalTheme };
+
+  // Fonti di verità separate per le modifiche in corso (azienda / personale): si aggiornano in
+  // modo sincrono ad ogni scelta (anteprima o salvataggio), quindi non risentono di eventuali
+  // ricariche dal database ancora in corso. Usare invece `settings`/`profile` (stato React) per
+  // unire le modifiche creerebbe una corsa: se si sceglie un colore e poi si sposta subito lo
+  // slider della trasparenza, il secondo salvataggio partirebbe da uno stato non ancora
+  // aggiornato con il colore appena scelto, cancellandolo.
+  const companyDraftRef = useRef(settings);
   useEffect(() => {
-    draftRef.current = settings;
+    companyDraftRef.current = settings;
   }, [settings]);
+  const personalDraftRef = useRef<Partial<ShopSettings>>(profile?.personalTheme ?? {});
+  useEffect(() => {
+    personalDraftRef.current = profile?.personalTheme ?? {};
+  }, [profile?.personalTheme]);
 
   // Anteprima immediata mentre si trascina sulla ruota/sul cursore: aggiorna solo lo stato
   // locale del tema, senza scrivere sul database (verrebbe chiamato troppo spesso durante il
   // trascinamento).
   const previewTheme = (patch: Partial<ShopSettings>) => {
-    const next = { ...draftRef.current, ...patch };
-    draftRef.current = next;
-    applyTheme(next);
+    if (scope === 'company') {
+      companyDraftRef.current = { ...companyDraftRef.current, ...patch };
+    } else {
+      personalDraftRef.current = { ...personalDraftRef.current, ...patch };
+    }
+    applyTheme({ ...companyDraftRef.current, ...personalDraftRef.current });
     bumpTheme();
   };
 
   // Salva sul database: chiamato al rilascio del dito/mouse.
   const commitTheme = async (patch: Partial<ShopSettings>) => {
-    const next = { ...draftRef.current, ...patch };
-    draftRef.current = next;
-    applyTheme(next);
-    bumpTheme();
+    previewTheme(patch);
     try {
-      await shopRepository.updateShopSettings(next);
-      await reloadSettings();
+      if (scope === 'company') {
+        await shopRepository.updateShopSettings(companyDraftRef.current);
+        await reloadSettings();
+      } else {
+        await membershipRepository.updateOwnThemeSettings(patch);
+        await reloadProfile();
+      }
+    } catch (err) {
+      showAlert('Errore', err instanceof Error ? err.message : String(err));
+    }
+  };
+
+  const hasPersonalTheme = Object.keys(profile?.personalTheme ?? {}).length > 0;
+  const resetPersonalTheme = async () => {
+    try {
+      await membershipRepository.resetOwnThemeSettings();
+      personalDraftRef.current = {};
+      applyTheme(companyDraftRef.current);
+      bumpTheme();
+      await reloadProfile();
     } catch (err) {
       showAlert('Errore', err instanceof Error ? err.message : String(err));
     }
@@ -102,11 +136,11 @@ export default function AppearanceScreen() {
   const togglePicker = (picker: 'primary' | 'accent' | 'background' | 'pattern1' | 'pattern2') =>
     setOpenPicker((current) => (current === picker ? null : picker));
 
-  const activePattern = settings.backgroundPattern ?? 'none';
+  const activePattern = effective.backgroundPattern ?? 'none';
   // Non impostati esplicitamente = il motivo usa comunque principale/secondario, così cambia
   // colore insieme al resto dell'app finché non lo si personalizza separatamente.
-  const patternColor1 = settings.patternColor1 ?? settings.primaryColor ?? DEFAULT_COLOR;
-  const patternColor2 = settings.patternColor2 ?? settings.accentColor ?? DEFAULT_COLOR;
+  const patternColor1 = effective.patternColor1 ?? effective.primaryColor ?? DEFAULT_COLOR;
+  const patternColor2 = effective.patternColor2 ?? effective.accentColor ?? DEFAULT_COLOR;
 
   const currentFontScale = profile?.fontScale ?? 1;
   const fontScaleSliderValue = (currentFontScale - MIN_FONT_SCALE) / (MAX_FONT_SCALE - MIN_FONT_SCALE);
@@ -148,22 +182,55 @@ export default function AppearanceScreen() {
 
   return (
     <ScreenContainer>
-      {isOwner && settingsLoading && (
-        <Text style={styles.hint}>{strings.common.loading}</Text>
-      )}
+      {settingsLoading && <Text style={styles.hint}>{strings.common.loading}</Text>}
 
-      {isOwner && !settingsLoading && (
+      {!settingsLoading && (
         <Card style={styles.groupCard}>
           <Text style={styles.sectionTitle}>Colori</Text>
-          <Text style={styles.hint}>
-            Scegli i colori e lo sfondo dell'app. Le scelte si applicano subito a tutti gli account
-            dell'azienda.
-          </Text>
+
+          {isOwner && (
+            <>
+              <View style={styles.scopeRow}>
+                <Pressable
+                  style={[styles.scopeChip, scope === 'company' && styles.scopeChipActive]}
+                  onPress={() => setScopeChoice('company')}
+                >
+                  <Text style={[styles.scopeChipLabel, scope === 'company' && styles.scopeChipLabelActive]}>
+                    Tutta l'azienda
+                  </Text>
+                </Pressable>
+                <Pressable
+                  style={[styles.scopeChip, scope === 'personal' && styles.scopeChipActive]}
+                  onPress={() => setScopeChoice('personal')}
+                >
+                  <Text style={[styles.scopeChipLabel, scope === 'personal' && styles.scopeChipLabelActive]}>
+                    Solo per me
+                  </Text>
+                </Pressable>
+              </View>
+              <Text style={styles.hint}>
+                {scope === 'company'
+                  ? "Scegli i colori e lo sfondo di base dell'app. Le scelte si applicano subito a tutti gli account dell'azienda che non li hanno personalizzati per sé."
+                  : 'Le scelte qui sotto si applicano solo al tuo account, sovrascrivendo il tema aziendale solo per te.'}
+              </Text>
+            </>
+          )}
+          {!isOwner && (
+            <Text style={styles.hint}>
+              Personalizza colori e sfondo solo per il tuo account: non cambiano nulla per gli altri.
+            </Text>
+          )}
+
+          {scope === 'personal' && hasPersonalTheme && (
+            <Pressable style={styles.resetRow} onPress={resetPersonalTheme}>
+              <Text style={styles.resetLabel}>Reimposta al tema dell'azienda</Text>
+            </Pressable>
+          )}
 
           <View style={styles.section}>
             <ColorPickerRow
               label="Colore principale"
-              value={settings.primaryColor ?? DEFAULT_COLOR}
+              value={effective.primaryColor ?? DEFAULT_COLOR}
               open={openPicker === 'primary'}
               onToggle={() => togglePicker('primary')}
               onChange={(hex) => previewTheme({ primaryColor: hex })}
@@ -174,7 +241,7 @@ export default function AppearanceScreen() {
           <View style={styles.section}>
             <ColorPickerRow
               label="Colore secondario"
-              value={settings.accentColor ?? DEFAULT_COLOR}
+              value={effective.accentColor ?? DEFAULT_COLOR}
               open={openPicker === 'accent'}
               onToggle={() => togglePicker('accent')}
               onChange={(hex) => previewTheme({ accentColor: hex })}
@@ -185,7 +252,7 @@ export default function AppearanceScreen() {
           <View style={styles.section}>
             <ColorPickerRow
               label="Colore sfondo"
-              value={settings.backgroundColor ?? settings.primaryColor ?? DEFAULT_COLOR}
+              value={effective.backgroundColor ?? effective.primaryColor ?? DEFAULT_COLOR}
               open={openPicker === 'background'}
               onToggle={() => togglePicker('background')}
               onChange={(hex) => previewTheme({ backgroundColor: hex })}
@@ -197,7 +264,7 @@ export default function AppearanceScreen() {
               Da sinistra (invisibile) a destra (colore pieno su tutta la schermata).
             </Text>
             <Slider
-              initialValue={(settings.backgroundOpacity ?? 0) / 100}
+              initialValue={(effective.backgroundOpacity ?? 0) / 100}
               onChange={(value) => previewTheme({ backgroundOpacity: Math.round(value * 100) })}
               onChangeComplete={(value) => commitTheme({ backgroundOpacity: Math.round(value * 100) })}
             />
@@ -213,7 +280,7 @@ export default function AppearanceScreen() {
                   Platform.OS === 'web'
                     ? backgroundPatternCss(option.id, patternColor1, patternColor2)
                     : null;
-                const selected = (settings.backgroundPattern ?? 'none') === option.id;
+                const selected = (effective.backgroundPattern ?? 'none') === option.id;
                 return (
                   <Pressable
                     key={option.id}
@@ -272,7 +339,7 @@ export default function AppearanceScreen() {
               molto chiari o molto scuri).
             </Text>
             <Slider
-              initialValue={Math.max(0, Math.min(2, (settings.shadowIntensity ?? 100) / 100)) / 2}
+              initialValue={Math.max(0, Math.min(2, (effective.shadowIntensity ?? 100) / 100)) / 2}
               onChange={(value) => previewTheme({ shadowIntensity: Math.round(value * 200) })}
               onChangeComplete={(value) => commitTheme({ shadowIntensity: Math.round(value * 200) })}
             />
@@ -280,7 +347,7 @@ export default function AppearanceScreen() {
         </Card>
       )}
 
-      <Card style={[styles.groupCard, isOwner && styles.spacedSection]}>
+      <Card style={[styles.groupCard, styles.spacedSection]}>
         <Text style={styles.sectionTitle}>Carattere</Text>
         <Text style={styles.hint}>
           Impostazioni personali di lettura: valgono solo per il tuo account, su questo dispositivo.
@@ -415,5 +482,38 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: colors.text,
     textAlign: 'center',
+  },
+  scopeRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 12,
+  },
+  scopeChip: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  scopeChipActive: {
+    backgroundColor: colors.accentMuted,
+    borderColor: colors.accent,
+  },
+  scopeChipLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.textMuted,
+  },
+  scopeChipLabelActive: {
+    color: colors.accent,
+  },
+  resetRow: {
+    marginBottom: 16,
+  },
+  resetLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.accent,
+    textDecorationLine: 'underline',
   },
 });

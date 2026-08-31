@@ -1,4 +1,5 @@
 import { supabase } from '@/src/lib/supabase';
+import { ShopSettings } from '@/src/models';
 
 export interface UnclaimedEmployee {
   id: string;
@@ -122,6 +123,48 @@ export async function updateOwnFontSettings(fontScale: number, fontColor: string
   const { error } = await supabase
     .from('profiles')
     .update({ font_scale: fontScale, font_color: fontColor ?? null })
+    .eq('id', auth.user.id);
+  if (error) throw error;
+}
+
+/**
+ * Salva le preferenze di colori/sfondo/motivo/ombre personali (non dell'azienda): chiunque può
+ * cambiare le proprie, titolare o dipendente, esattamente come per dimensione/colore del testo.
+ * Aggiorna solo i campi presenti in `theme` (`in`, non un semplice controllo di verità: 0 è un
+ * valore valido per opacità/intensità ombre), lasciando invariati gli altri.
+ */
+export async function updateOwnThemeSettings(theme: Partial<ShopSettings>): Promise<void> {
+  const { data: auth } = await supabase.auth.getUser();
+  if (!auth.user) throw new Error('Nessun utente collegato.');
+  const patch: Record<string, unknown> = {};
+  if ('primaryColor' in theme) patch.theme_primary_color = theme.primaryColor ?? null;
+  if ('accentColor' in theme) patch.theme_accent_color = theme.accentColor ?? null;
+  if ('backgroundColor' in theme) patch.theme_background_color = theme.backgroundColor ?? null;
+  if ('backgroundOpacity' in theme) patch.theme_background_opacity = theme.backgroundOpacity ?? null;
+  if ('shadowIntensity' in theme) patch.theme_shadow_intensity = theme.shadowIntensity ?? null;
+  if ('backgroundPattern' in theme) patch.theme_background_pattern = theme.backgroundPattern ?? null;
+  if ('patternColor1' in theme) patch.theme_pattern_color_1 = theme.patternColor1 ?? null;
+  if ('patternColor2' in theme) patch.theme_pattern_color_2 = theme.patternColor2 ?? null;
+  const { error } = await supabase.from('profiles').update(patch).eq('id', auth.user.id);
+  if (error) throw error;
+}
+
+/** Cancella tutte le preferenze di tema personali: da quel momento l'account torna a vedere il tema dell'azienda. */
+export async function resetOwnThemeSettings(): Promise<void> {
+  const { data: auth } = await supabase.auth.getUser();
+  if (!auth.user) throw new Error('Nessun utente collegato.');
+  const { error } = await supabase
+    .from('profiles')
+    .update({
+      theme_primary_color: null,
+      theme_accent_color: null,
+      theme_background_color: null,
+      theme_background_opacity: null,
+      theme_shadow_intensity: null,
+      theme_background_pattern: null,
+      theme_pattern_color_1: null,
+      theme_pattern_color_2: null,
+    })
     .eq('id', auth.user.id);
   if (error) throw error;
 }
