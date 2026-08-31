@@ -1,9 +1,11 @@
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useState } from 'react';
+import { LayoutChangeEvent, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Employee, ShiftAssignment, ShiftDayOverride, ShiftTemplate, WEEKDAY_LABELS_SHORT, WEEKDAYS } from '@/src/models';
 import { dateForWeekday } from '@/src/engine';
 import { formatDateLong } from '@/src/utils/date';
 import { getContrastTextColor } from '@/src/utils/color';
 import { colors, themeState } from '@/src/components/shared/colors';
+import { usePinchZoom } from '@/src/hooks/usePinchZoom';
 
 const COLUMN_WIDTH = 210;
 
@@ -33,6 +35,16 @@ export function WeeklyShiftGrid({
   onEditShiftDay,
 }: WeeklyShiftGridProps) {
   const employeeById = new Map(employees.map((e) => [e.id, e]));
+  const { containerRef, scale } = usePinchZoom();
+  // Dimensione "naturale" (non ingrandita/rimpicciolita) del contenuto: serve a dire allo
+  // ScrollView quanto spazio scorrevole riservare, perché "transform: scale" cambia solo il
+  // disegno a schermo, non le dimensioni di layout su cui lo ScrollView calcola cosa è
+  // scorribile — senza, ingrandendo la parte eccedente resterebbe irraggiungibile.
+  const [naturalSize, setNaturalSize] = useState({ width: 0, height: 0 });
+  const handleContentLayout = (event: LayoutChangeEvent) => {
+    const { width, height } = event.nativeEvent.layout;
+    setNaturalSize((prev) => (prev.width === width && prev.height === height ? prev : { width, height }));
+  };
 
   return (
     <ScrollView
@@ -41,7 +53,15 @@ export function WeeklyShiftGrid({
       style={styles.horizontalScroll}
       contentContainerStyle={styles.horizontalScrollContent}
     >
-      <View style={styles.row}>
+      <View
+        ref={containerRef}
+        style={
+          naturalSize.width
+            ? { width: naturalSize.width * scale, height: naturalSize.height * scale }
+            : undefined
+        }
+      >
+        <View onLayout={handleContentLayout} style={[styles.row, { transform: [{ scale }], transformOrigin: 'left top' }]}>
         {WEEKDAYS.map((weekday) => {
           const date = dateForWeekday(weekStartDate, weekday);
           const templatesForDay = shiftTemplates
@@ -176,6 +196,7 @@ export function WeeklyShiftGrid({
             </View>
           );
         })}
+        </View>
       </View>
     </ScrollView>
   );
