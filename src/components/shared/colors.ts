@@ -1,4 +1,5 @@
 import { mixHex } from '@/src/utils/color';
+import { BackgroundPatternId } from '@/src/utils/backgroundPattern';
 
 export const colors = {
   background: '#F8FAFC',
@@ -42,7 +43,9 @@ function lightTint(hex: string, whiteRatio = 0.88): string {
 }
 
 const DEFAULT_PRIMARY = '#4F46E5';
-const DEFAULT_ACCENT = '#4F46E5';
+// Diverso dal primario di default (prima coincidevano): altrimenti il colore secondario non ha
+// mai presenza visiva finché qualcuno non lo personalizza esplicitamente in Personalizzazione.
+const DEFAULT_ACCENT = '#DB2777';
 const DEFAULT_TEXT = '#0F172A';
 const DEFAULT_BACKGROUND = '#F8FAFC';
 
@@ -64,6 +67,8 @@ export const themeState = {
   backgroundOpacity: 0,
   chromeBackground: DEFAULT_BACKGROUND,
   shadowIntensity: DEFAULT_SHADOW_INTENSITY / 100,
+  /** Motivo ripetuto per il velo di sfondo, in alternativa al colore pieno. 'none' = colore pieno (comportamento di sempre). */
+  backgroundPattern: 'none' as BackgroundPatternId,
 };
 
 /**
@@ -77,6 +82,7 @@ export function applyTheme(settings: {
   backgroundColor?: string;
   backgroundOpacity?: number;
   shadowIntensity?: number;
+  backgroundPattern?: BackgroundPatternId;
 }): void {
   const primary = settings.primaryColor ?? DEFAULT_PRIMARY;
   const accent = settings.accentColor ?? DEFAULT_ACCENT;
@@ -90,6 +96,7 @@ export function applyTheme(settings: {
   themeState.backgroundOpacity = backgroundOpacity;
   themeState.chromeBackground = mixHex(DEFAULT_BACKGROUND, backgroundColor, Math.min(backgroundOpacity, 100) / 100);
   themeState.shadowIntensity = (settings.shadowIntensity ?? DEFAULT_SHADOW_INTENSITY) / 100;
+  themeState.backgroundPattern = settings.backgroundPattern ?? 'none';
 }
 
 /**

@@ -7,6 +7,7 @@ import { TextField } from '@/src/components/shared/TextField';
 import { colors } from '@/src/components/shared/colors';
 import { MonthlyLeaveCalendar } from '@/src/components/calendar/MonthlyLeaveCalendar';
 import { DayAbsenceModal, DayAbsenceModalProps, DaySelection } from '@/src/components/calendar/DayAbsenceModal';
+import { EmptyState } from '@/src/components/shared/EmptyState';
 import { useEmployees } from '@/src/hooks/useEmployees';
 import { useAllTimeOff } from '@/src/hooks/useAllTimeOff';
 import { useAllCategoryRequests } from '@/src/hooks/useAllCategoryRequests';
@@ -353,7 +354,7 @@ export default function LeaveScreen() {
 
           <Text style={styles.sectionTitle}>Chi è assente questo mese</Text>
           {leaveByDay.length === 0 ? (
-            <Text style={styles.hint}>Nessuno è assente questo mese.</Text>
+            <EmptyState icon="🌴" title="Nessuno è assente questo mese" />
           ) : (
             leaveByDay.map(([date, names]) => (
               <View key={date} style={styles.leaveDayRow}>

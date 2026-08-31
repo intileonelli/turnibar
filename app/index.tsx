@@ -1,4 +1,4 @@
-import { Text, View, StyleSheet } from 'react-native';
+import { Platform, Text, View, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ScreenContainer } from '@/src/components/shared/ScreenContainer';
 import { Button } from '@/src/components/shared/Button';
@@ -51,7 +51,19 @@ export default function HomeScreen() {
       </View>
 
       <View style={styles.centerArea}>
-        <Text style={styles.title}>{company?.name ?? strings.home.title}</Text>
+        <View style={styles.titleWrap}>
+          <Text style={styles.title}>{company?.name ?? strings.home.title}</Text>
+          <View
+            style={[
+              styles.titleRule,
+              // Sfumatura indaco→accento solo su web (react-native-web supporta "background"
+              // CSS); su nativo resta un semplice trattino nel colore secondario.
+              Platform.OS === 'web'
+                ? ({ background: `linear-gradient(90deg, ${colors.primary}, ${colors.accent})` } as object)
+                : { backgroundColor: colors.accent },
+            ]}
+          />
+        </View>
 
         <View style={styles.grid}>
           {tileRows.map((row, rowIndex) => (
@@ -91,12 +103,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  titleWrap: {
+    alignItems: 'center',
+    marginBottom: 28,
+  },
   title: {
     fontSize: 28,
     fontWeight: '800',
     color: colors.text,
     textAlign: 'center',
-    marginBottom: 28,
+  },
+  titleRule: {
+    width: 34,
+    height: 3,
+    borderRadius: 2,
+    backgroundColor: colors.accent,
+    marginTop: 8,
   },
   account: {
     fontSize: 13,

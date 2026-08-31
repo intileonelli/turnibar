@@ -64,8 +64,47 @@ export function AuthScreen() {
       style={styles.flex}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <ScrollView contentContainerStyle={styles.container}>
-        <Text style={styles.title}>Turnibar</Text>
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        <View
+          style={[
+            styles.hero,
+            // Sfumatura indaco→accento solo su web (react-native-web supporta "background"
+            // CSS); su nativo un colore pieno, senza sfumatura.
+            Platform.OS === 'web'
+              ? ({ background: `linear-gradient(155deg, ${colors.primary} 0%, #4338CA 48%, ${colors.accent} 145%)` } as object)
+              : { backgroundColor: colors.primary },
+          ]}
+        >
+          <View style={[styles.heroBlob, styles.heroBlob1, { backgroundColor: colors.accent }]} />
+          <View style={[styles.heroBlob, styles.heroBlob2]} />
+          <View style={[styles.heroBlob, styles.heroBlob3]} />
+          <View style={[styles.heroBlob, styles.heroBlob4, { backgroundColor: colors.accent }]} />
+          {Platform.OS === 'web' && (
+            <>
+              <View
+                pointerEvents="none"
+                style={[
+                  styles.heroTexture,
+                  { background: 'radial-gradient(rgba(255,255,255,0.35) 1px, transparent 1.4px) 0 0/15px 15px repeat' } as object,
+                ]}
+              />
+              <View
+                pointerEvents="none"
+                style={[
+                  styles.heroSheen,
+                  { background: 'linear-gradient(115deg, transparent 40%, rgba(255,255,255,0.16) 50%, transparent 60%)' } as object,
+                ]}
+              />
+            </>
+          )}
+          <View style={styles.heroMark}>
+            <Text style={styles.heroMarkIcon}>🍹</Text>
+          </View>
+          <Text style={styles.heroWordmark}>Turnibar</Text>
+          <Text style={styles.heroTagline}>Gestione automatica dei turni</Text>
+        </View>
+
+        <View style={styles.container}>
         <Text style={styles.subtitle}>
           {mode === 'login' ? 'Accedi al tuo account' : 'Crea un nuovo account'}
         </Text>
@@ -103,6 +142,7 @@ export function AuthScreen() {
             {mode === 'login' ? 'Registrati' : 'Accedi'}
           </Text>
         </View>
+        </View>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -112,18 +152,87 @@ const styles = StyleSheet.create({
   flex: {
     flex: 1,
   },
+  scrollContent: {
+    flexGrow: 1,
+    backgroundColor: colors.background,
+  },
+  hero: {
+    height: 220,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  heroBlob: {
+    position: 'absolute',
+    borderRadius: 999,
+    backgroundColor: 'rgba(255,255,255,0.22)',
+  },
+  heroBlob1: {
+    width: 150,
+    height: 150,
+    top: -55,
+    right: -45,
+    opacity: 0.55,
+  },
+  heroBlob2: {
+    width: 70,
+    height: 70,
+    bottom: -25,
+    left: -10,
+  },
+  heroBlob3: {
+    width: 44,
+    height: 44,
+    top: 26,
+    left: 24,
+  },
+  heroBlob4: {
+    width: 26,
+    height: 26,
+    bottom: 44,
+    right: 34,
+    opacity: 0.6,
+  },
+  heroTexture: {
+    ...StyleSheet.absoluteFillObject,
+    opacity: 0.5,
+  },
+  heroSheen: {
+    position: 'absolute',
+    top: '-20%',
+    bottom: '-20%',
+    left: '-50%',
+    right: '-50%',
+  },
+  heroMark: {
+    width: 56,
+    height: 56,
+    borderRadius: 19,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.3)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  heroMarkIcon: {
+    fontSize: 26,
+  },
+  heroWordmark: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: '#fff',
+    letterSpacing: -0.2,
+  },
+  heroTagline: {
+    fontSize: 12.5,
+    color: 'rgba(255,255,255,0.85)',
+    marginTop: 3,
+  },
   container: {
     flexGrow: 1,
     justifyContent: 'center',
     padding: 24,
-    backgroundColor: colors.background,
-  },
-  title: {
-    fontSize: 32,
-    fontWeight: '800',
-    color: colors.text,
-    textAlign: 'center',
-    marginBottom: 4,
   },
   subtitle: {
     fontSize: 15,

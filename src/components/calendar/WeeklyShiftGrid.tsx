@@ -78,7 +78,7 @@ export function WeeklyShiftGrid({
                       // Colore + geometria dell'ombra insieme: react-native-web non calcola il
                       // box-shadow se il colore (dinamico) è separato dalla geometria statica di
                       // StyleSheet.create.
-                      { shadowColor: colors.primary, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.2 * themeState.shadowIntensity, shadowRadius: 16 },
+                      { shadowColor: colors.accent, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.2 * themeState.shadowIntensity, shadowRadius: 16 },
                     ]}
                   >
                     <Pressable

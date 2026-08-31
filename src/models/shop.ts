@@ -1,4 +1,5 @@
 import { Weekday } from './weekday';
+import { BackgroundPatternId } from '@/src/utils/backgroundPattern';
 
 /** Orario di apertura del negozio per un giorno della settimana. */
 export interface OpeningHours {
@@ -58,4 +59,6 @@ export interface ShopSettings {
   backgroundOpacity?: number;
   /** Intensità delle ombre (Card, pulsanti, ecc.), 0-100+. Non impostato = 100 (default dell'app). */
   shadowIntensity?: number;
+  /** Motivo ripetuto per il velo di sfondo, in alternativa al colore pieno. Non impostato = 'none'. */
+  backgroundPattern?: BackgroundPatternId;
 }

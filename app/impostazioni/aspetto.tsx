@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { Platform, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { ScreenContainer } from '@/src/components/shared/ScreenContainer';
 import { Chip } from '@/src/components/shared/Chip';
 import { ColorWheelPicker } from '@/src/components/shared/ColorWheelPicker';
@@ -9,6 +9,7 @@ import { applyFontScale } from '@/src/components/shared/typography';
 import { useShopSettings } from '@/src/hooks/useShopSettings';
 import { shopRepository, membershipRepository } from '@/src/db/repositories';
 import { ShopSettings } from '@/src/models';
+import { BACKGROUND_PATTERN_OPTIONS, backgroundPatternCss } from '@/src/utils/backgroundPattern';
 import { showAlert } from '@/src/utils/alert';
 import { useThemeStore } from '@/src/store/themeStore';
 import { useCurrentAuth } from '@/src/context/AuthContext';
@@ -151,6 +152,38 @@ export default function AppearanceScreen() {
               onChange={(value) => previewTheme({ backgroundOpacity: Math.round(value * 100) })}
               onChangeComplete={(value) => commitTheme({ backgroundOpacity: Math.round(value * 100) })}
             />
+
+            <Text style={[styles.label, styles.spacedLabel]}>Motivo di sfondo</Text>
+            <Text style={styles.hint}>
+              Al posto del colore pieno, un motivo ripetuto nei due colori dell'app (visibile solo
+              sul sito, non ancora sull'app nativa).
+            </Text>
+            <View style={styles.patternRow}>
+              {BACKGROUND_PATTERN_OPTIONS.map((option) => {
+                const patternCss =
+                  Platform.OS === 'web'
+                    ? backgroundPatternCss(option.id, settings.primaryColor ?? DEFAULT_COLOR, settings.accentColor ?? DEFAULT_COLOR)
+                    : null;
+                const selected = (settings.backgroundPattern ?? 'none') === option.id;
+                return (
+                  <Pressable
+                    key={option.id}
+                    onPress={() => commitTheme({ backgroundPattern: option.id })}
+                    style={[styles.patternSwatch, selected && styles.patternSwatchSelected]}
+                  >
+                    <View
+                      style={[
+                        styles.patternPreview,
+                        (patternCss ? { background: patternCss } : { backgroundColor: colors.background }) as object,
+                      ]}
+                    />
+                    <Text style={styles.patternLabel} numberOfLines={2}>
+                      {option.label}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
           </View>
 
           <View style={styles.section}>
@@ -236,5 +269,34 @@ const styles = StyleSheet.create({
   chipsRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
+  },
+  patternRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  patternSwatch: {
+    width: 88,
+    borderRadius: 12,
+    padding: 4,
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  patternSwatchSelected: {
+    borderColor: colors.accent,
+  },
+  patternPreview: {
+    width: '100%',
+    height: 56,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.border,
+    marginBottom: 6,
+  },
+  patternLabel: {
+    fontSize: 10.5,
+    fontWeight: '600',
+    color: colors.text,
+    textAlign: 'center',
   },
 });

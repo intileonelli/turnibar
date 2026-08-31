@@ -15,7 +15,7 @@ export function Card({ children, onPress, style }: CardProps) {
   const cardStyle = [
     styles.card,
     {
-      shadowColor: colors.primary,
+      shadowColor: colors.accent,
       backgroundColor: colors.surface,
       shadowOffset: { width: 0, height: 8 },
       shadowOpacity: 0.16 * themeState.shadowIntensity,

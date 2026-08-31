@@ -22,7 +22,13 @@ export const ScreenContainer = forwardRef<ScrollView, ScreenContainerProps>(func
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['bottom']}>
-      <ScreenBackground color={themeState.backgroundColor} opacity={themeState.backgroundOpacity} />
+      <ScreenBackground
+        color={themeState.backgroundColor}
+        opacity={themeState.backgroundOpacity}
+        pattern={themeState.backgroundPattern}
+        primaryColor={colors.primary}
+        accentColor={colors.accent}
+      />
       {scroll ? (
         <ScrollView
           ref={ref}

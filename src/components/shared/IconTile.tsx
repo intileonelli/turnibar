@@ -22,7 +22,7 @@ export function IconTile({ icon, label, onPress }: IconTileProps) {
               // 0px 0px 0px, finché un secondo stile con la sua stessa geometria non viene unito).
               {
                 backgroundColor: colors.accentMuted,
-                shadowColor: colors.primary,
+                shadowColor: colors.accent,
                 ...(pressed
                   ? { shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.3 * themeState.shadowIntensity, shadowRadius: 6 }
                   : { shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.28 * themeState.shadowIntensity, shadowRadius: 14 }),
