@@ -30,9 +30,11 @@ function hashInt(a: number, b: number, c = 0): number {
 /** Poligoni sfaccettati: tassellazione di triangoli equilateri, con una sfumatura per ciascuno,
  * nei toni chiari dei due colori scelti per il motivo. */
 function lowPolyBackground(colorA: string, colorB: string): string {
-  const cols = 7;
-  const rowsN = 5;
-  const b = 46;
+  // Tessera grande (poche ripetizioni): pensata soprattutto per lo schermo di un telefono, dove
+  // la maggior parte delle persone usa l'app.
+  const cols = 5;
+  const rowsN = 4;
+  const b = 92;
   const h = (b * Math.sqrt(3)) / 2;
   const tileW = b * cols;
   const tileH = h * rowsN;
@@ -76,9 +78,9 @@ function lowPolyBackground(colorA: string, colorB: string): string {
  * triangolo, cerchio, mezzaluna), in una tavolozza multicolore fissa, indipendente dai colori
  * dell'azienda (come richiesto: qui non ha senso limitarsi a due soli toni). */
 function bauhausBackground(): string {
-  const cols = 4;
+  const cols = 3;
   const rowsN = 4;
-  const s = 40;
+  const s = 84;
   const tileW = cols * s;
   const tileH = rowsN * s;
   let shapes = '';
@@ -113,32 +115,45 @@ function bauhausBackground(): string {
   return `${svgUrl(svg)} 0 0/${tileW}px ${tileH}px repeat`;
 }
 
-/** Onde morbide: tre fasce ondulate sovrapposte, nei toni chiari dei due colori del motivo. */
+/** Onde morbide: un pannello alto con 3 sole onde ampie (pensato per leggersi come un unico
+ * disegno sullo schermo di un telefono, non come tante onde piccole ripetute). Ogni onda è un
+ * "nastro" che non tocca mai i bordi della tessera: sopra e sotto resta sempre il colore di
+ * base, così i bordi alto/basso combaciano sempre e non si vede lo stacco quando si ripete. */
 function wavesBackground(colorA: string, colorB: string): string {
-  const w = 220;
-  const h = 140;
-  const c1 = mixHex(colorA, '#FFFFFF', 0.72);
-  const c2 = mixHex(mixHex(colorA, colorB, 0.5), '#FFFFFF', 0.66);
-  const c3 = mixHex(colorB, '#FFFFFF', 0.7);
-  const bg = mixHex(colorA, '#FFFFFF', 0.9);
-  const wave = (baseY: number, amp: number, color: string, invert: boolean) => {
-    const period = w / 2;
-    let d = `M0,${baseY}`;
-    for (let x = 0; x <= w + period; x += period / 2) {
-      const y = baseY + (Math.round(x / (period / 2)) % 2 === 0 ? -amp : amp) * (invert ? -1 : 1);
-      d += ` Q${x - period / 4},${y} ${x},${baseY}`;
+  const w = 300;
+  const tileH = 640;
+  const bg = mixHex(colorA, '#FFFFFF', 0.88);
+  const c1 = mixHex(colorA, '#FFFFFF', 0.62);
+  const c2 = mixHex(mixHex(colorA, colorB, 0.5), '#FFFFFF', 0.55);
+  const c3 = mixHex(colorB, '#FFFFFF', 0.6);
+  const ribbon = (baseY: number, amp: number, thickness: number, color: string, phaseOffset: number) => {
+    // Un numero intero di cicli nella larghezza della tessera: la fase a x=w coincide con quella
+    // a x=0, senza spezzature quando il motivo si ripete in orizzontale.
+    const cyclesPerTile = 2;
+    const period = w / cyclesPerTile;
+    const step = period / 16;
+    const topPts: [number, number][] = [];
+    const botPts: [number, number][] = [];
+    for (let x = 0; x <= w + 0.001; x += step) {
+      const angle = ((x + phaseOffset) / period) * Math.PI * 2;
+      const y = baseY + Math.sin(angle) * amp;
+      topPts.push([x, y - thickness / 2]);
+      botPts.push([x, y + thickness / 2]);
     }
-    d += ` L${w},${h} L0,${h} Z`;
-    return `<path d="${d}" fill="${color}" opacity="0.85"/>`;
+    let d = `M${topPts[0][0]},${topPts[0][1]}`;
+    for (let i = 1; i < topPts.length; i++) d += ` L${topPts[i][0]},${topPts[i][1]}`;
+    for (let i = botPts.length - 1; i >= 0; i--) d += ` L${botPts[i][0]},${botPts[i][1]}`;
+    d += ' Z';
+    return `<path d="${d}" fill="${color}"/>`;
   };
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"><rect width="${w}" height="${h}" fill="${bg}"/>${wave(h * 0.35, 14, c1, false)}${wave(h * 0.6, 12, c2, true)}${wave(h * 0.82, 10, c3, false)}</svg>`;
-  return `${svgUrl(svg)} 0 0/${w}px ${h}px repeat`;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${tileH}" viewBox="0 0 ${w} ${tileH}"><rect width="${w}" height="${tileH}" fill="${bg}"/>${ribbon(tileH * 0.28, 26, 60, c1, 0)}${ribbon(tileH * 0.55, 22, 54, c2, w / 3)}${ribbon(tileH * 0.8, 18, 46, c3, w / 1.7)}</svg>`;
+  return `${svgUrl(svg)} 0 0/${w}px ${tileH}px repeat`;
 }
 
 /** Losanghe sfumate: quilt di rombi pieni (un rombo centrale + 4 triangoli d'angolo per
  * tessera, l'unica combinazione che copre l'intera tessera senza vuoti), con sfumatura. */
 function diamondsBackground(colorA: string, colorB: string): string {
-  const s = 40;
+  const s = 76;
   const half = s / 2;
   const gA1 = mixHex(colorA, '#FFFFFF', 0.45);
   const gA2 = mixHex(colorA, '#FFFFFF', 0.68);
