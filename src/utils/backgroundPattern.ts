@@ -70,7 +70,7 @@ function lowPolyBackground(colorA: string, colorB: string): string {
       shapes += `<polygon points="${x + b},${y + h} ${x + b / 2},${y} ${x + b * 1.5},${y}" fill="${downFill}"/>`;
     }
   }
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${tileW}" height="${tileH}" viewBox="0 0 ${tileW} ${tileH}"><defs>${defs}</defs><g stroke="${lineColor}" stroke-width="0.75" stroke-opacity="0.6">${shapes}</g></svg>`;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${tileW}" height="${tileH}" viewBox="0 0 ${tileW} ${tileH}"><defs>${defs}<filter id="ds" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="1.2" stdDeviation="1" flood-color="#000000" flood-opacity="0.18"/></filter></defs><g filter="url(#ds)" stroke="${lineColor}" stroke-width="0.75" stroke-opacity="0.6">${shapes}</g></svg>`;
   return `${svgUrl(svg)} 0 0/${tileW}px ${tileH}px repeat`;
 }
 
@@ -86,20 +86,23 @@ function bauhausBackground(): string {
   let shapes = '';
   let defs = '';
   let gid = 0;
-  const cell = (type: number, x: number, y: number, size: number, gradId: string, bg: string) => {
+  // Il rettangolo di sfondo di ogni cella resta piatto (è il "tavolo" su cui poggiano le forme);
+  // solo la forma in primo piano riceve l'ombra, per un effetto di rilievo invece che piatto.
+  const cellShape = (type: number, x: number, y: number, size: number, gradId: string) => {
     switch (type) {
       case 0:
-        return `<rect x="${x}" y="${y}" width="${size}" height="${size}" fill="${bg}"/><path d="M${x},${y + size} A${size},${size} 0 0 1 ${x + size},${y} L${x},${y}Z" fill="url(#${gradId})"/>`;
+        return `<path d="M${x},${y + size} A${size},${size} 0 0 1 ${x + size},${y} L${x},${y}Z" fill="url(#${gradId})"/>`;
       case 1:
-        return `<rect x="${x}" y="${y}" width="${size}" height="${size}" fill="${bg}"/><polygon points="${x},${y + size} ${x + size},${y + size} ${x + size},${y}" fill="url(#${gradId})"/>`;
+        return `<polygon points="${x},${y + size} ${x + size},${y + size} ${x + size},${y}" fill="url(#${gradId})"/>`;
       case 2:
-        return `<rect x="${x}" y="${y}" width="${size}" height="${size}" fill="${bg}"/><circle cx="${x + size / 2}" cy="${y + size / 2}" r="${size * 0.32}" fill="url(#${gradId})"/>`;
+        return `<circle cx="${x + size / 2}" cy="${y + size / 2}" r="${size * 0.32}" fill="url(#${gradId})"/>`;
       case 3:
-        return `<rect x="${x}" y="${y}" width="${size}" height="${size}" fill="${bg}"/><path d="M${x},${y + size / 2} A${size / 2},${size / 2} 0 0 1 ${x + size},${y + size / 2} Z" fill="url(#${gradId})"/>`;
+        return `<path d="M${x},${y + size / 2} A${size / 2},${size / 2} 0 0 1 ${x + size},${y + size / 2} Z" fill="url(#${gradId})"/>`;
       default:
-        return `<rect x="${x}" y="${y}" width="${size}" height="${size}" fill="${bg}"/>`;
+        return '';
     }
   };
+  let bgRects = '';
   for (let r = 0; r < rowsN; r++) {
     for (let c = 0; c < cols; c++) {
       const h1 = hashInt(r, c);
@@ -108,45 +111,41 @@ function bauhausBackground(): string {
       const bgBase = mixHex(BAUHAUS_PALETTE[(h1 >> 3) % BAUHAUS_PALETTE.length], '#FFFFFF', 0.86);
       const id = `bg${gid++}`;
       defs += `<linearGradient id="${id}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${mixHex(base, '#FFFFFF', 0.25)}"/><stop offset="1" stop-color="${base}"/></linearGradient>`;
-      shapes += cell(cellType, c * s, r * s, s, id, bgBase);
+      bgRects += `<rect x="${c * s}" y="${r * s}" width="${s}" height="${s}" fill="${bgBase}"/>`;
+      shapes += cellShape(cellType, c * s, r * s, s, id);
     }
   }
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${tileW}" height="${tileH}" viewBox="0 0 ${tileW} ${tileH}"><defs>${defs}</defs>${shapes}</svg>`;
+  defs += `<filter id="ds" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="1.2" stdDeviation="1" flood-color="#000000" flood-opacity="0.2"/></filter>`;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${tileW}" height="${tileH}" viewBox="0 0 ${tileW} ${tileH}"><defs>${defs}</defs>${bgRects}<g filter="url(#ds)">${shapes}</g></svg>`;
   return `${svgUrl(svg)} 0 0/${tileW}px ${tileH}px repeat`;
 }
 
-/** Onde morbide: un pannello alto con 3 sole onde ampie (pensato per leggersi come un unico
- * disegno sullo schermo di un telefono, non come tante onde piccole ripetute). Ogni onda è un
- * "nastro" che non tocca mai i bordi della tessera: sopra e sotto resta sempre il colore di
- * base, così i bordi alto/basso combaciano sempre e non si vede lo stacco quando si ripete. */
+/** Onde morbide: un pannello alto con 3 sole colline ampie e sovrapposte (pensato per leggersi
+ * come un unico disegno sullo schermo di un telefono, non come tante onde piccole ripetute). Le
+ * colline si sovrappongono con una leggera trasparenza, così i colori si fondono dove si
+ * incontrano — l'effetto "colline" morbide. Un numero intero di cicli nella larghezza della
+ * tessera fa combaciare la fase a x=0 e x=w, senza spezzature in orizzontale. */
 function wavesBackground(colorA: string, colorB: string): string {
   const w = 300;
-  const tileH = 640;
-  const bg = mixHex(colorA, '#FFFFFF', 0.88);
-  const c1 = mixHex(colorA, '#FFFFFF', 0.62);
-  const c2 = mixHex(mixHex(colorA, colorB, 0.5), '#FFFFFF', 0.55);
-  const c3 = mixHex(colorB, '#FFFFFF', 0.6);
-  const ribbon = (baseY: number, amp: number, thickness: number, color: string, phaseOffset: number) => {
-    // Un numero intero di cicli nella larghezza della tessera: la fase a x=w coincide con quella
-    // a x=0, senza spezzature quando il motivo si ripete in orizzontale.
+  const tileH = 760;
+  const bg = mixHex(colorA, '#FFFFFF', 0.9);
+  const c1 = mixHex(colorA, '#FFFFFF', 0.65);
+  const c2 = mixHex(mixHex(colorA, colorB, 0.5), '#FFFFFF', 0.58);
+  const c3 = mixHex(colorB, '#FFFFFF', 0.62);
+  const hill = (baseY: number, amp: number, color: string, phaseOffset: number) => {
     const cyclesPerTile = 2;
     const period = w / cyclesPerTile;
     const step = period / 16;
-    const topPts: [number, number][] = [];
-    const botPts: [number, number][] = [];
+    let d = `M0,${tileH}`;
     for (let x = 0; x <= w + 0.001; x += step) {
       const angle = ((x + phaseOffset) / period) * Math.PI * 2;
       const y = baseY + Math.sin(angle) * amp;
-      topPts.push([x, y - thickness / 2]);
-      botPts.push([x, y + thickness / 2]);
+      d += ` L${x},${y}`;
     }
-    let d = `M${topPts[0][0]},${topPts[0][1]}`;
-    for (let i = 1; i < topPts.length; i++) d += ` L${topPts[i][0]},${topPts[i][1]}`;
-    for (let i = botPts.length - 1; i >= 0; i--) d += ` L${botPts[i][0]},${botPts[i][1]}`;
-    d += ' Z';
-    return `<path d="${d}" fill="${color}"/>`;
+    d += ` L${w},${tileH} Z`;
+    return `<path d="${d}" fill="${color}" opacity="0.82"/>`;
   };
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${tileH}" viewBox="0 0 ${w} ${tileH}"><rect width="${w}" height="${tileH}" fill="${bg}"/>${ribbon(tileH * 0.28, 26, 60, c1, 0)}${ribbon(tileH * 0.55, 22, 54, c2, w / 3)}${ribbon(tileH * 0.8, 18, 46, c3, w / 1.7)}</svg>`;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${tileH}" viewBox="0 0 ${w} ${tileH}"><defs><filter id="ds" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="-2" stdDeviation="2" flood-color="#000000" flood-opacity="0.16"/></filter></defs><rect width="${w}" height="${tileH}" fill="${bg}"/><g filter="url(#ds)">${hill(tileH * 0.38, 32, c1, 0)}${hill(tileH * 0.64, 28, c2, w / 3)}${hill(tileH * 0.87, 24, c3, w / 1.6)}</g></svg>`;
   return `${svgUrl(svg)} 0 0/${w}px ${tileH}px repeat`;
 }
 
@@ -159,7 +158,7 @@ function diamondsBackground(colorA: string, colorB: string): string {
   const gA2 = mixHex(colorA, '#FFFFFF', 0.68);
   const gB1 = mixHex(colorB, '#FFFFFF', 0.42);
   const gB2 = mixHex(colorB, '#FFFFFF', 0.66);
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${s}" height="${s}" viewBox="0 0 ${s} ${s}"><defs><linearGradient id="dA" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${gA1}"/><stop offset="1" stop-color="${gA2}"/></linearGradient><linearGradient id="dB" x1="1" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${gB1}"/><stop offset="1" stop-color="${gB2}"/></linearGradient></defs><polygon points="${half},0 ${s},${half} ${half},${s} 0,${half}" fill="url(#dA)"/><polygon points="0,0 ${half},0 0,${half}" fill="url(#dB)"/><polygon points="${s},0 ${s},${half} ${half},0" fill="url(#dB)"/><polygon points="${s},${s} ${s},${half} ${half},${s}" fill="url(#dB)"/><polygon points="0,${s} 0,${half} ${half},${s}" fill="url(#dB)"/></svg>`;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${s}" height="${s}" viewBox="0 0 ${s} ${s}"><defs><linearGradient id="dA" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${gA1}"/><stop offset="1" stop-color="${gA2}"/></linearGradient><linearGradient id="dB" x1="1" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${gB1}"/><stop offset="1" stop-color="${gB2}"/></linearGradient><filter id="ds" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="1" stdDeviation="0.8" flood-color="#000000" flood-opacity="0.16"/></filter></defs><g filter="url(#ds)"><polygon points="${half},0 ${s},${half} ${half},${s} 0,${half}" fill="url(#dA)"/><polygon points="0,0 ${half},0 0,${half}" fill="url(#dB)"/><polygon points="${s},0 ${s},${half} ${half},0" fill="url(#dB)"/><polygon points="${s},${s} ${s},${half} ${half},${s}" fill="url(#dB)"/><polygon points="0,${s} 0,${half} ${half},${s}" fill="url(#dB)"/></g></svg>`;
   return `${svgUrl(svg)} 0 0/${s}px ${s}px repeat`;
 }
 
