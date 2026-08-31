@@ -4,7 +4,7 @@ import { colors, themeState } from './colors';
 
 interface CardProps extends PropsWithChildren {
   onPress?: () => void;
-  style?: ViewStyle;
+  style?: ViewStyle | (ViewStyle | false | undefined)[];
 }
 
 export function Card({ children, onPress, style }: CardProps) {

@@ -23,8 +23,11 @@ export function ScreenBackground({ color, opacity, pattern = 'none', primaryColo
       <View
         pointerEvents="none"
         // "background" non è nel tipo ViewStyle di React Native (è supportata solo da
-        // react-native-web, che la passa direttamente al CSS): da qui il cast.
-        style={[styles.overlay, { background: patternCss, opacity: resolvedOpacity } as object]}
+        // react-native-web, che la passa direttamente al CSS): da qui il cast. Il colore
+        // scelto va appeso in fondo alla stringa (senza virgola, sull'ultimo "layer"): è così
+        // che il CSS "background" imposta anche un colore di base, altrimenti tra le linee del
+        // motivo si vedrebbe sempre il bianco della pagina invece del colore scelto.
+        style={[styles.overlay, { background: `${patternCss} ${color}`, opacity: resolvedOpacity } as object]}
       />
     );
   }

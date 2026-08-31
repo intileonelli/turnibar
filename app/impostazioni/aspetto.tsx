@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { ScreenContainer } from '@/src/components/shared/ScreenContainer';
+import { Card } from '@/src/components/shared/Card';
 import { Chip } from '@/src/components/shared/Chip';
 import { ColorWheelPicker } from '@/src/components/shared/ColorWheelPicker';
 import { Slider } from '@/src/components/shared/Slider';
@@ -110,7 +111,7 @@ export default function AppearanceScreen() {
       )}
 
       {isOwner && !settingsLoading && (
-        <>
+        <Card style={styles.groupCard}>
           <Text style={styles.sectionTitle}>Colori</Text>
           <Text style={styles.hint}>
             Scegli i colori e lo sfondo dell'app. Le scelte si applicano subito a tutti gli account
@@ -198,45 +199,50 @@ export default function AppearanceScreen() {
               onChangeComplete={(value) => commitTheme({ shadowIntensity: Math.round(value * 200) })}
             />
           </View>
-        </>
+        </Card>
       )}
 
-      <Text style={[styles.sectionTitle, isOwner && styles.spacedSection]}>Carattere</Text>
-      <Text style={styles.hint}>
-        Impostazioni personali di lettura: valgono solo per il tuo account, su questo dispositivo.
-      </Text>
+      <Card style={[styles.groupCard, isOwner && styles.spacedSection]}>
+        <Text style={styles.sectionTitle}>Carattere</Text>
+        <Text style={styles.hint}>
+          Impostazioni personali di lettura: valgono solo per il tuo account, su questo dispositivo.
+        </Text>
 
-      <View style={styles.section}>
-        <Text style={styles.label}>Dimensione testo</Text>
-        <View style={styles.fontScaleRow}>
-          <Slider
-            initialValue={Math.max(0, Math.min(1, fontScaleSliderValue))}
-            onChange={() => {}}
-            onChangeComplete={commitFontScale}
-          />
-        </View>
-      </View>
-
-      <View style={styles.section}>
-        <Text style={styles.label}>Colore testo</Text>
-        <Text style={styles.hint}>Assicurati che resti leggibile rispetto allo sfondo.</Text>
-        <View style={styles.chipsRow}>
-          {FONT_COLOR_OPTIONS.map((option) => (
-            <Chip
-              key={option.hex}
-              label={option.label}
-              color={option.hex === '#FFFFFF' ? colors.border : option.hex}
-              selected={(profile?.fontColor ?? '#0F172A') === option.hex}
-              onPress={() => commitFontColor(option.hex)}
+        <View style={styles.section}>
+          <Text style={styles.label}>Dimensione testo</Text>
+          <View style={styles.fontScaleRow}>
+            <Slider
+              initialValue={Math.max(0, Math.min(1, fontScaleSliderValue))}
+              onChange={() => {}}
+              onChangeComplete={commitFontScale}
             />
-          ))}
+          </View>
         </View>
-      </View>
+
+        <View style={styles.section}>
+          <Text style={styles.label}>Colore testo</Text>
+          <Text style={styles.hint}>Assicurati che resti leggibile rispetto allo sfondo.</Text>
+          <View style={styles.chipsRow}>
+            {FONT_COLOR_OPTIONS.map((option) => (
+              <Chip
+                key={option.hex}
+                label={option.label}
+                color={option.hex === '#FFFFFF' ? colors.border : option.hex}
+                selected={(profile?.fontColor ?? '#0F172A') === option.hex}
+                onPress={() => commitFontColor(option.hex)}
+              />
+            ))}
+          </View>
+        </View>
+      </Card>
     </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
+  groupCard: {
+    padding: 16,
+  },
   sectionTitle: {
     fontSize: 16,
     fontWeight: '700',
