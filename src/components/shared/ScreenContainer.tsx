@@ -26,8 +26,8 @@ export const ScreenContainer = forwardRef<ScrollView, ScreenContainerProps>(func
         color={themeState.backgroundColor}
         opacity={themeState.backgroundOpacity}
         pattern={themeState.backgroundPattern}
-        primaryColor={colors.primary}
-        accentColor={colors.accent}
+        patternColor1={themeState.patternColor1}
+        patternColor2={themeState.patternColor2}
       />
       {scroll ? (
         <ScrollView

@@ -61,4 +61,8 @@ export interface ShopSettings {
   shadowIntensity?: number;
   /** Motivo ripetuto per il velo di sfondo, in alternativa al colore pieno. Non impostato = 'none'. */
   backgroundPattern?: BackgroundPatternId;
+  /** Colori dedicati al motivo di sfondo, separati da primario/secondario. Non impostati = usa
+   * primario/secondario (il motivo "bauhaus" fa eccezione, ha una tavolozza fissa). */
+  patternColor1?: string;
+  patternColor2?: string;
 }

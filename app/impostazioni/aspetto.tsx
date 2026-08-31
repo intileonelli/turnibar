@@ -96,9 +96,17 @@ export default function AppearanceScreen() {
     }
   };
 
-  const [openPicker, setOpenPicker] = useState<'primary' | 'accent' | 'background' | null>(null);
-  const togglePicker = (picker: 'primary' | 'accent' | 'background') =>
+  const [openPicker, setOpenPicker] = useState<'primary' | 'accent' | 'background' | 'pattern1' | 'pattern2' | null>(
+    null
+  );
+  const togglePicker = (picker: 'primary' | 'accent' | 'background' | 'pattern1' | 'pattern2') =>
     setOpenPicker((current) => (current === picker ? null : picker));
+
+  const activePattern = settings.backgroundPattern ?? 'none';
+  // Non impostati esplicitamente = il motivo usa comunque principale/secondario, così cambia
+  // colore insieme al resto dell'app finché non lo si personalizza separatamente.
+  const patternColor1 = settings.patternColor1 ?? settings.primaryColor ?? DEFAULT_COLOR;
+  const patternColor2 = settings.patternColor2 ?? settings.accentColor ?? DEFAULT_COLOR;
 
   const currentFontScale = profile?.fontScale ?? 1;
   const fontScaleSliderValue = (currentFontScale - MIN_FONT_SCALE) / (MAX_FONT_SCALE - MIN_FONT_SCALE);
@@ -196,14 +204,14 @@ export default function AppearanceScreen() {
 
             <Text style={[styles.label, styles.spacedLabel]}>Motivo di sfondo</Text>
             <Text style={styles.hint}>
-              Al posto del colore pieno, un motivo ripetuto nei due colori dell'app (visibile solo
-              sul sito, non ancora sull'app nativa).
+              Al posto del colore pieno, un motivo ripetuto (visibile solo sul sito, non ancora
+              sull'app nativa).
             </Text>
             <View style={styles.patternRow}>
               {BACKGROUND_PATTERN_OPTIONS.map((option) => {
                 const patternCss =
                   Platform.OS === 'web'
-                    ? backgroundPatternCss(option.id, settings.primaryColor ?? DEFAULT_COLOR, settings.accentColor ?? DEFAULT_COLOR)
+                    ? backgroundPatternCss(option.id, patternColor1, patternColor2)
                     : null;
                 const selected = (settings.backgroundPattern ?? 'none') === option.id;
                 return (
@@ -225,6 +233,36 @@ export default function AppearanceScreen() {
                 );
               })}
             </View>
+
+            {activePattern !== 'none' && activePattern !== 'bauhaus' && (
+              <>
+                <Text style={[styles.label, styles.spacedLabel]}>Colori del motivo</Text>
+                <Text style={styles.hint}>
+                  Separati da principale e secondario: usali per adattare il motivo senza cambiare
+                  i colori del resto dell'app.
+                </Text>
+                <View style={styles.section}>
+                  <ColorPickerRow
+                    label="Colore motivo 1"
+                    value={patternColor1}
+                    open={openPicker === 'pattern1'}
+                    onToggle={() => togglePicker('pattern1')}
+                    onChange={(hex) => previewTheme({ patternColor1: hex })}
+                    onChangeComplete={(hex) => commitTheme({ patternColor1: hex })}
+                  />
+                </View>
+                <View style={styles.section}>
+                  <ColorPickerRow
+                    label="Colore motivo 2"
+                    value={patternColor2}
+                    open={openPicker === 'pattern2'}
+                    onToggle={() => togglePicker('pattern2')}
+                    onChange={(hex) => previewTheme({ patternColor2: hex })}
+                    onChangeComplete={(hex) => commitTheme({ patternColor2: hex })}
+                  />
+                </View>
+              </>
+            )}
           </View>
 
           <View style={styles.section}>

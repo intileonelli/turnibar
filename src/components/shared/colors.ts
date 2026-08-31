@@ -69,6 +69,9 @@ export const themeState = {
   shadowIntensity: DEFAULT_SHADOW_INTENSITY / 100,
   /** Motivo ripetuto per il velo di sfondo, in alternativa al colore pieno. 'none' = colore pieno (comportamento di sempre). */
   backgroundPattern: 'none' as BackgroundPatternId,
+  /** Colori dedicati al motivo (separati da primario/secondario, con quei due come default). */
+  patternColor1: DEFAULT_PRIMARY,
+  patternColor2: DEFAULT_ACCENT,
 };
 
 /**
@@ -83,6 +86,8 @@ export function applyTheme(settings: {
   backgroundOpacity?: number;
   shadowIntensity?: number;
   backgroundPattern?: BackgroundPatternId;
+  patternColor1?: string;
+  patternColor2?: string;
 }): void {
   const primary = settings.primaryColor ?? DEFAULT_PRIMARY;
   const accent = settings.accentColor ?? DEFAULT_ACCENT;
@@ -97,6 +102,10 @@ export function applyTheme(settings: {
   themeState.chromeBackground = mixHex(DEFAULT_BACKGROUND, backgroundColor, Math.min(backgroundOpacity, 100) / 100);
   themeState.shadowIntensity = (settings.shadowIntensity ?? DEFAULT_SHADOW_INTENSITY) / 100;
   themeState.backgroundPattern = settings.backgroundPattern ?? 'none';
+  // Non impostati esplicitamente = seguono comunque primario/secondario, finché non vengono
+  // personalizzati separatamente in Personalizzazione.
+  themeState.patternColor1 = settings.patternColor1 ?? primary;
+  themeState.patternColor2 = settings.patternColor2 ?? accent;
 }
 
 /**

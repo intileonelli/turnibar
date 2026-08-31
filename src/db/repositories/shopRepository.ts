@@ -51,6 +51,8 @@ export async function getShopSettings(): Promise<ShopSettings> {
         background_opacity: number | null;
         shadow_intensity: number | null;
         background_pattern: string | null;
+        pattern_color_1: string | null;
+        pattern_color_2: string | null;
       }
     | undefined;
   return {
@@ -62,6 +64,8 @@ export async function getShopSettings(): Promise<ShopSettings> {
     backgroundOpacity: row?.background_opacity ?? undefined,
     shadowIntensity: row?.shadow_intensity ?? undefined,
     backgroundPattern: (row?.background_pattern as ShopSettings['backgroundPattern']) ?? undefined,
+    patternColor1: row?.pattern_color_1 ?? undefined,
+    patternColor2: row?.pattern_color_2 ?? undefined,
   };
 }
 
@@ -75,6 +79,8 @@ export async function updateShopSettings(settings: ShopSettings): Promise<void> 
     p_background_opacity: settings.backgroundOpacity ?? null,
     p_shadow_intensity: settings.shadowIntensity ?? null,
     p_background_pattern: settings.backgroundPattern ?? null,
+    p_pattern_color_1: settings.patternColor1 ?? null,
+    p_pattern_color_2: settings.patternColor2 ?? null,
   });
   if (error) throw error;
 }
