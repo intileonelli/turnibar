@@ -8,6 +8,14 @@ import { showAlert } from '@/src/utils/alert';
 
 type Mode = 'login' | 'signup';
 
+const MIN_PASSWORD_LENGTH = 8;
+
+/** Almeno 8 caratteri, con un mix di lettere e numeri (non richiede maiuscole/simboli: regole
+ * troppo rigide spingono a password prevedibili solo per soddisfare il pattern). */
+function isPasswordStrongEnough(password: string): boolean {
+  return password.length >= MIN_PASSWORD_LENGTH && /[a-zA-Z]/.test(password) && /[0-9]/.test(password);
+}
+
 export function AuthScreen() {
   const [mode, setMode] = useState<Mode>('login');
   const [email, setEmail] = useState('');
@@ -19,8 +27,11 @@ export function AuthScreen() {
       showAlert('Dati mancanti', 'Inserisci email e password.');
       return;
     }
-    if (mode === 'signup' && password.length < 6) {
-      showAlert('Password troppo corta', 'La password deve avere almeno 6 caratteri.');
+    if (mode === 'signup' && !isPasswordStrongEnough(password)) {
+      showAlert(
+        'Password troppo debole',
+        `Deve avere almeno ${MIN_PASSWORD_LENGTH} caratteri, con almeno una lettera e un numero.`
+      );
       return;
     }
 
@@ -72,7 +83,7 @@ export function AuthScreen() {
           value={password}
           onChangeText={setPassword}
           secureTextEntry
-          placeholder="Almeno 6 caratteri"
+          placeholder={mode === 'signup' ? 'Almeno 8 caratteri, con lettere e numeri' : 'Password'}
         />
 
         <Button
