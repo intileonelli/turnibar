@@ -140,25 +140,26 @@ function bauhausBackground(): string {
   const s = 84;
   const tileW = cols * s;
   const tileH = rowsN * s;
-  let shapes = '';
-  let defs = '';
-  let gid = 0;
   // Il rettangolo di sfondo di ogni cella resta piatto (è il "tavolo" su cui poggiano le forme);
-  // solo la forma in primo piano riceve l'ombra, per un effetto di rilievo invece che piatto.
-  const cellShape = (type: number, x: number, y: number, size: number, gradId: string) => {
+  // solo la forma in primo piano riceve rilievo, per un effetto di profondità invece che piatto.
+  // Il quarto di cerchio e la mezzaluna (curvi) restano a sfumatura piatta + il filo chiaro
+  // duplicato sotto (stessa tecnica di prima): un vero bevel a sfaccettature richiede lati
+  // dritti. Il triangolo (poligono) ha invece un vero bevel, e il cerchio una resa "a cupola"
+  // (sfumatura radiale scentrata verso la luce) — l'equivalente circolare dello stesso bevel.
+  const flatCellShape = (type: number, x: number, y: number, size: number, gradId: string) => {
     switch (type) {
       case 0:
         return `<path d="M${x},${y + size} A${size},${size} 0 0 1 ${x + size},${y} L${x},${y}Z" fill="url(#${gradId})"/>`;
-      case 1:
-        return `<polygon points="${x},${y + size} ${x + size},${y + size} ${x + size},${y}" fill="url(#${gradId})"/>`;
-      case 2:
-        return `<circle cx="${x + size / 2}" cy="${y + size / 2}" r="${size * 0.32}" fill="url(#${gradId})"/>`;
       case 3:
         return `<path d="M${x},${y + size / 2} A${size / 2},${size / 2} 0 0 1 ${x + size},${y + size / 2} Z" fill="url(#${gradId})"/>`;
       default:
         return '';
     }
   };
+  let flatShapes = '';
+  let depthShapes = '';
+  let defs = '';
+  let gid = 0;
   let bgRects = '';
   for (let r = 0; r < rowsN; r++) {
     for (let c = 0; c < cols; c++) {
@@ -166,18 +167,36 @@ function bauhausBackground(): string {
       const cellType = h1 % 5;
       const base = mixHex(BAUHAUS_PALETTE[h1 % BAUHAUS_PALETTE.length], '#FFFFFF', 0.55);
       const bgBase = mixHex(BAUHAUS_PALETTE[(h1 >> 3) % BAUHAUS_PALETTE.length], '#FFFFFF', 0.86);
-      const id = `bg${gid++}`;
-      defs += `<linearGradient id="${id}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${mixHex(base, '#FFFFFF', 0.25)}"/><stop offset="1" stop-color="${base}"/></linearGradient>`;
-      bgRects += `<rect x="${c * s}" y="${r * s}" width="${s}" height="${s}" fill="${bgBase}"/>`;
-      shapes += cellShape(cellType, c * s, r * s, s, id);
+      const x = c * s;
+      const y = r * s;
+      bgRects += `<rect x="${x}" y="${y}" width="${s}" height="${s}" fill="${bgBase}"/>`;
+      if (cellType === 1) {
+        depthShapes += bevelFacets(
+          [
+            [x, y + s],
+            [x + s, y + s],
+            [x + s, y],
+          ],
+          base,
+          0.3,
+        );
+      } else if (cellType === 2) {
+        const domeId = `rd${gid++}`;
+        defs += `<radialGradient id="${domeId}" cx="35%" cy="30%" r="75%"><stop offset="0" stop-color="${mixHex(base, '#FFFFFF', 0.6)}"/><stop offset="0.65" stop-color="${base}"/><stop offset="1" stop-color="${mixHex(base, '#000000', 0.38)}"/></radialGradient>`;
+        depthShapes += `<circle cx="${x + s / 2}" cy="${y + s / 2}" r="${s * 0.32}" fill="url(#${domeId})"/>`;
+      } else {
+        const id = `bg${gid++}`;
+        defs += `<linearGradient id="${id}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${mixHex(base, '#FFFFFF', 0.25)}"/><stop offset="1" stop-color="${base}"/></linearGradient>`;
+        flatShapes += flatCellShape(cellType, x, y, s, id);
+      }
     }
   }
   defs += `<filter id="ds" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="0" dy="2.5" stdDeviation="3" flood-color="#000000" flood-opacity="0.85"/></filter>`;
-  // Filo chiaro sopra ogni forma (oltre all'ombra scura sotto): luce sopra + ombra sotto è
-  // quello che legge davvero come rilievo, non la sola ombra. Valori sovradimensionati (vedi
-  // lowPolyBackground) per restare visibili anche con "Trasparenza sfondo" bassa.
-  const highlight = shapes.replace(/fill="[^"]*"/g, 'fill="none"');
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${tileW}" height="${tileH}" viewBox="0 0 ${tileW} ${tileH}"><defs>${defs}</defs>${bgRects}<g filter="url(#ds)">${shapes}</g><g fill="none" stroke="#FFFFFF" stroke-opacity="0.95" stroke-width="2" stroke-linejoin="round">${highlight}</g></svg>`;
+  // Filo chiaro sopra le forme curve (oltre all'ombra scura sotto): luce sopra + ombra sotto è
+  // quello che legge come rilievo, non la sola ombra. Sovradimensionato (vedi lowPolyBackground)
+  // per restare visibile anche con "Trasparenza sfondo" bassa.
+  const highlight = flatShapes.replace(/fill="[^"]*"/g, 'fill="none"');
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${tileW}" height="${tileH}" viewBox="0 0 ${tileW} ${tileH}"><defs>${defs}</defs>${bgRects}<g filter="url(#ds)">${flatShapes}${depthShapes}</g><g fill="none" stroke="#FFFFFF" stroke-opacity="0.95" stroke-width="2" stroke-linejoin="round">${highlight}</g></svg>`;
   return `${svgUrl(svg)} 0 0/${tileW}px ${tileH}px repeat`;
 }
 
